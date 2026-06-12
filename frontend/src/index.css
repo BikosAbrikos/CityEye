@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+}
+
+/* Leaflet должен занимать всю высоту контейнера */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #e8e8e4;
+}
+
+.num {
+  @apply font-mono;
+  font-variant-numeric: tabular-nums;
+}
