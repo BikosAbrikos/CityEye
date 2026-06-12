@@ -1,4 +1,32 @@
+from datetime import datetime
 from pydantic import BaseModel
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    email: str
+    is_admin: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RegisterIn(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    token: str
+    user: UserOut
 
 
 class DistrictOut(BaseModel):
@@ -9,7 +37,7 @@ class DistrictOut(BaseModel):
     centroid_lng: float
     index_score: float
     open_problems: int
-    bucket: str  # good | mid | poor
+    bucket: str
 
     class Config:
         from_attributes = True
@@ -25,7 +53,9 @@ class ProblemOut(BaseModel):
     photo_url: str | None
     status: str
     district_id: int | None
+    user_id: int | None
     duplicate_count: int
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -48,3 +78,7 @@ class StatsOut(BaseModel):
     by_severity: dict
     merged_reports: int
     districts: int
+
+
+class StatusUpdateIn(BaseModel):
+    status: str

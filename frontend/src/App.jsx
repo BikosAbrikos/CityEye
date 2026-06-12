@@ -1,4 +1,5 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, Link } from "react-router-dom";
+import { useAuth } from "./lib/auth.jsx";
 
 function DesktopTab({ to, children }) {
   return (
@@ -34,6 +35,8 @@ function MobileTab({ to, icon, label }) {
 }
 
 export default function App() {
+  const { user } = useAuth();
+
   return (
     <div className="flex h-dvh flex-col">
       {/* Desktop top nav */}
@@ -50,8 +53,25 @@ export default function App() {
         <nav className="flex items-center gap-1 rounded-full bg-canvas p-1">
           <DesktopTab to="/">Карта</DesktopTab>
           <DesktopTab to="/report">Сообщить</DesktopTab>
-          <DesktopTab to="/admin">Админка</DesktopTab>
+          {user?.is_admin && <DesktopTab to="/admin">Админка</DesktopTab>}
         </nav>
+        {/* Auth button */}
+        {user ? (
+          <Link
+            to="/dashboard"
+            className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-canvas hover:bg-ink/80 transition"
+          >
+            <span className="h-2 w-2 rounded-full bg-amber" />
+            {user.username}
+          </Link>
+        ) : (
+          <Link
+            to="/auth"
+            className="rounded-full border border-ink/20 px-4 py-2 text-sm font-semibold text-ink hover:bg-ink/5 transition"
+          >
+            Войти
+          </Link>
+        )}
       </header>
 
       {/* Page content */}
@@ -60,10 +80,11 @@ export default function App() {
       </main>
 
       {/* Mobile bottom nav */}
-      <nav className="flex md:hidden shrink-0 border-t border-ink/10 bg-card safe-bottom">
+      <nav className="flex md:hidden shrink-0 border-t border-ink/10 bg-card">
         <MobileTab to="/" icon="🗺️" label="Карта" />
         <MobileTab to="/report" icon="📸" label="Сообщить" />
-        <MobileTab to="/admin" icon="📋" label="Админка" />
+        <MobileTab to={user ? "/dashboard" : "/auth"} icon={user ? "👤" : "🔑"} label={user ? "Профиль" : "Войти"} />
+        {user?.is_admin && <MobileTab to="/admin" icon="⚙️" label="Админ" />}
       </nav>
     </div>
   );

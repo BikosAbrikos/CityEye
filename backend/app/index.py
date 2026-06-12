@@ -1,14 +1,11 @@
-"""Индекс качества района и привязка точки к району."""
 from shapely.geometry import Point, Polygon
 from sqlalchemy.orm import Session
 
-from .models import SEVERITY_WEIGHTS, District, Problem
+from .models import ACTIVE_STATUSES, SEVERITY_WEIGHTS, District, Problem
 
 GOOD_THRESHOLD = 70.0
-MID_THRESHOLD = 40.0
-# Множитель нагрузки: подобран так, чтобы сид-данные давали наглядный спред цветов
-# (зелёный / янтарь / красный по районам).
-LOAD_SCALE = 3.0
+MID_THRESHOLD  = 40.0
+LOAD_SCALE     = 3.0
 
 
 def bucket_for(score: float) -> str:
@@ -20,7 +17,6 @@ def bucket_for(score: float) -> str:
 
 
 def _polygon(district: District) -> Polygon:
-    # geometry: GeoJSON-кольца [[ [lng,lat], ... ]]; берём внешнее кольцо.
     ring = district.geometry[0]
     return Polygon([(lng, lat) for lng, lat in ring])
 
@@ -32,7 +28,6 @@ def assign_district(db: Session, lat: float, lng: float) -> int | None:
         poly = _polygon(d)
         if poly.contains(pt):
             return d.id
-        # запасной вариант — ближайший центроид, чтобы точка всегда попала в район
         dist = (d.centroid_lat - lat) ** 2 + (d.centroid_lng - lng) ** 2
         if best_dist is None or dist < best_dist:
             best_id, best_dist = d.id, dist
@@ -42,7 +37,10 @@ def assign_district(db: Session, lat: float, lng: float) -> int | None:
 def district_load(db: Session, district_id: int) -> float:
     problems = (
         db.query(Problem)
-        .filter(Problem.district_id == district_id, Problem.status == "open")
+        .filter(
+            Problem.district_id == district_id,
+            Problem.status.in_(ACTIVE_STATUSES),
+        )
         .all()
     )
     return sum(SEVERITY_WEIGHTS.get(p.severity, 1) for p in problems)

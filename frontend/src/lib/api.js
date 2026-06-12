@@ -1,6 +1,13 @@
-// В dev Vite проксирует /api → localhost:8000.
-// В проде (Railway) VITE_API_URL указывает на бэкенд-сервис.
 const BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
+
+export function getToken() {
+  return localStorage.getItem("cityeye_token");
+}
+
+function authHeaders() {
+  const t = getToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
 
 async function handle(res) {
   if (!res.ok) {
@@ -32,26 +39,57 @@ export const api = {
     fd.append("type", type);
     fd.append("severity", severity);
     fd.append("description", description || "");
-    return fetch(`${BASE}/reports`, { method: "POST", body: fd }).then(handle);
+    return fetch(`${BASE}/reports`, {
+      method: "POST",
+      body: fd,
+      headers: authHeaders(),
+    }).then(handle);
   },
 
+  myReports: () =>
+    fetch(`${BASE}/my-reports`, { headers: authHeaders() }).then(handle),
+
+  updateStatus: (id, status) =>
+    fetch(`${BASE}/problems/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ status }),
+    }).then(handle),
+
   resolve: (id) =>
-    fetch(`${BASE}/problems/${id}/resolve`, { method: "POST" }).then(handle),
+    fetch(`${BASE}/problems/${id}/resolve`, {
+      method: "POST",
+      headers: authHeaders(),
+    }).then(handle),
+
+  register: (body) =>
+    fetch(`${BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(handle),
+
+  login: (body) =>
+    fetch(`${BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then(handle),
 };
 
 export const TYPE_LABELS = {
-  pothole: "Яма",
-  garbage: "Мусор",
-  streetlight: "Фонарь",
-  graffiti: "Граффити",
-  sign: "Знак",
-  other: "Другое",
+  pothole: "Яма", garbage: "Мусор", streetlight: "Фонарь",
+  graffiti: "Граффити", sign: "Знак", other: "Другое",
 };
 
-export const SEVERITY_LABELS = {
-  low: "Низкая",
-  medium: "Средняя",
-  high: "Высокая",
+export const SEVERITY_LABELS = { low: "Низкая", medium: "Средняя", high: "Высокая" };
+
+export const STATUS_META = {
+  open:       { label: "Принята",    color: "#F4A024", step: 0 },
+  pending:    { label: "Принята",    color: "#F4A024", step: 0 },
+  in_process: { label: "В работе",   color: "#4A90D9", step: 1 },
+  completed:  { label: "Завершена",  color: "#3FA07E", step: 2 },
+  rejected:   { label: "Отклонена", color: "#E1543B", step: -1 },
 };
 
 export const ALMATY_CENTER = [43.238, 76.889];
