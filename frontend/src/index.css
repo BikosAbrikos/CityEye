@@ -6,14 +6,11 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
   }
-  h1,
-  h2,
-  h3 {
+  h1, h2, h3 {
     @apply font-display;
   }
 }
 
-/* Leaflet должен занимать всю высоту контейнера */
 .leaflet-container {
   height: 100%;
   width: 100%;
@@ -21,6 +18,81 @@
 }
 
 .num {
-  @apply font-mono;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── District label badges on map ── */
+.district-label-icon {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.dlabel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--dc);
+  color: #fff;
+  border-radius: 10px;
+  padding: 4px 8px 3px;
+  font-family: 'Archivo', sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.28);
+  cursor: pointer;
+  transition: transform .15s;
+  line-height: 1.1;
+}
+.dlabel:hover { transform: scale(1.06); }
+.dlabel-score {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', monospace;
+}
+.dlabel-max {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  opacity: 0.75;
+  vertical-align: middle;
+}
+.dlabel-name {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.88;
+  margin-top: 1px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ── Photo scan overlay ── */
+.scan-tl, .scan-tr, .scan-bl, .scan-br {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-color: #F4A024;
+  border-style: solid;
+  opacity: 0.9;
+}
+.scan-tl { top: 14px; left: 14px; border-width: 2px 0 0 2px; border-radius: 2px 0 0 0; }
+.scan-tr { top: 14px; right: 14px; border-width: 2px 2px 0 0; border-radius: 0 2px 0 0; }
+.scan-bl { bottom: 14px; left: 14px; border-width: 0 0 2px 2px; border-radius: 0 0 0 2px; }
+.scan-br { bottom: 14px; right: 14px; border-width: 0 2px 2px 0; border-radius: 0 0 2px 0; }
+
+@keyframes scan-sweep {
+  0%   { top: 14px; opacity: 1; }
+  80%  { opacity: 1; }
+  100% { top: calc(100% - 14px); opacity: 0; }
+}
+.scan-line {
+  position: absolute;
+  left: 14px; right: 14px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #F4A024 40%, #F4A024 60%, transparent);
+  animation: scan-sweep 1.4s ease-in-out infinite;
+}
+
+/* ── Bottom sheet shadow ── */
+.sheet-shadow {
+  box-shadow: 0 -8px 32px rgba(21,24,28,0.14);
 }
