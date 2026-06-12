@@ -6,15 +6,12 @@
   body {
     @apply bg-canvas text-ink font-sans antialiased;
   }
+  .dark body {
+    @apply bg-night text-white;
+  }
   h1, h2, h3 {
     @apply font-display;
   }
-}
-
-.leaflet-container {
-  height: 100%;
-  width: 100%;
-  background: #e8e8e4;
 }
 
 .num {
@@ -22,12 +19,22 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── District label badges on map ── */
-.district-label-icon {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+/* ── MapLibre ── */
+.maplibregl-canvas {
+  outline: none;
 }
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.dark .maplibregl-ctrl-group {
+  background: #1B1F26;
+}
+.dark .maplibregl-ctrl-group button span {
+  filter: invert(1);
+}
+
+/* ── District label badges on map ── */
 .dlabel {
   display: inline-flex;
   flex-direction: column;

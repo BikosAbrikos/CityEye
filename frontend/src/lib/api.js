@@ -1,4 +1,4 @@
-const BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
+export const BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
 
 export function getToken() {
   return localStorage.getItem("cityeye_token");
@@ -80,6 +80,11 @@ export const api = {
 export const TYPE_LABELS = {
   pothole: "Яма", garbage: "Мусор", streetlight: "Фонарь",
   graffiti: "Граффити", sign: "Знак", other: "Другое",
+};
+
+export const TYPE_ICONS = {
+  pothole: "🕳️", garbage: "🗑️", streetlight: "💡",
+  graffiti: "🎨", sign: "🚧", other: "📌",
 };
 
 export const SEVERITY_LABELS = { low: "Низкая", medium: "Средняя", high: "Высокая" };
