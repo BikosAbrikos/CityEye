@@ -1,4 +1,6 @@
-const BASE = "/api";
+// В dev Vite проксирует /api → localhost:8000.
+// В проде (Railway) VITE_API_URL указывает на бэкенд-сервис.
+const BASE = (import.meta.env.VITE_API_URL ?? "") + "/api";
 
 async function handle(res) {
   if (!res.ok) {
