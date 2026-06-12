@@ -101,8 +101,13 @@ export default function MapPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([api.districts(), api.problems({ status: "open" }), api.stats()])
-      .then(([d, p, s]) => { setDistricts(d); setProblems(p); setStats(s); })
+    const ACTIVE = ["open", "pending", "in_process"];
+    Promise.all([api.districts(), api.problems(), api.stats()])
+      .then(([d, p, s]) => {
+        setDistricts(d);
+        setProblems(p.filter((x) => ACTIVE.includes(x.status)));
+        setStats(s);
+      })
       .catch((e) => setError(e.message));
   }, []);
 
