@@ -236,7 +236,19 @@ async def analyze(
     result = ai_model.analyze_photo(
         data, file.content_type or "image/jpeg", description
     )
+    # relevant=false → фронт не даёт отправить заявку и возвращает на карту
     return AnalyzeOut(**result)
+
+
+# ── АДМИН: ПЕРЕСИД БАЗЫ (только администратор) ────────────────────────────────
+
+@router.post("/admin/reseed")
+def admin_reseed(admin: User = Depends(require_admin)):
+    """Пересоздаёт районы и демо-заявки из seed.py (пользователей не трогает).
+    Нужен для применения свежего seed на проде, где БД персистентна."""
+    from .seed import run as seed_run
+    seed_run()
+    return {"ok": True, "message": "База пересоздана из seed.py"}
 
 
 # ── СОЗДАТЬ ЗАЯВКУ ────────────────────────────────────────────────────────────

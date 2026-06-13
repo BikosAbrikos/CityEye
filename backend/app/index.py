@@ -1,11 +1,27 @@
 from shapely.geometry import Point, Polygon
 from sqlalchemy.orm import Session
 
-from .models import ACTIVE_STATUSES, SEVERITY_WEIGHTS, District, Problem
+from .models import SEVERITY_WEIGHTS, District, Problem
 
 GOOD_THRESHOLD = 70.0
 MID_THRESHOLD  = 40.0
-LOAD_SCALE     = 3.0
+
+# Базовый индекс района — РЕАЛЬНЫЕ данные мини-ресёрча по Алматы (2024–2026).
+# Источник: docs/almaty_district_research.md (compass artifact). Это «состояние
+# на сегодня». Новые необработанные заявки временно опускают индекс ниже базы.
+RESEARCH_BASE = {
+    "Алмалинский":   71.0,
+    "Бостандыкский": 63.0,
+    "Медеуский":     63.0,
+    "Ауэзовский":    59.0,
+    "Турксибский":   52.0,
+    "Алатауский":    41.0,
+}
+
+# Насколько одна НЕОБРАБОТАННАЯ (pending) заявка снижает индекс района.
+# Взятая в работу / закрытая заявка штраф снимает — район «восстанавливается».
+PENALTY_SCALE = 3.0
+PENDING_STATUSES = ("open", "pending")
 
 
 def bucket_for(score: float) -> str:
@@ -34,12 +50,13 @@ def assign_district(db: Session, lat: float, lng: float) -> int | None:
     return best_id
 
 
-def district_load(db: Session, district_id: int) -> float:
+def pending_load(db: Session, district_id: int) -> float:
+    """Сумма весов НЕОБРАБОТАННЫХ (pending/open) заявок района."""
     problems = (
         db.query(Problem)
         .filter(
             Problem.district_id == district_id,
-            Problem.status.in_(ACTIVE_STATUSES),
+            Problem.status.in_(PENDING_STATUSES),
         )
         .all()
     )
@@ -50,8 +67,8 @@ def recalc_district(db: Session, district_id: int) -> None:
     d = db.get(District, district_id)
     if d is None:
         return
-    load = district_load(db, district_id)
-    score = 100.0 - load * LOAD_SCALE
+    base = RESEARCH_BASE.get(d.name, 100.0)
+    score = base - pending_load(db, district_id) * PENALTY_SCALE
     d.index_score = max(0.0, min(100.0, round(score, 1)))
     db.commit()
 

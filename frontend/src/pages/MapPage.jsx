@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import MapView from "../components/MapView.jsx";
 import OnboardingVideo from "../components/OnboardingVideo.jsx";
 import { SeverityBadge, StatusBadge, DupBadge } from "../components/ui/Badge.jsx";
 import { BottomSheet } from "../components/ui/BottomSheet.jsx";
 import { Spinner } from "../components/ui/Spinner.jsx";
-import { CameraIcon, XIcon, TypeIcon, ChevronUpIcon } from "../lib/icons.jsx";
+import { CameraIcon, XIcon, TypeIcon, ChevronUpIcon, AlertIcon } from "../lib/icons.jsx";
 import { useIsDesktop } from "../lib/useMediaQuery.js";
 import { api, TYPE_LABELS } from "../lib/api.js";
 import { BUCKET_COLOR, bucketOf } from "../lib/colors.js";
@@ -145,7 +145,20 @@ export default function MapPage() {
   const [onboard, setOnboard] = useState(
     () => !localStorage.getItem("cityeye_onboarded_v1")
   );
+  const [notice, setNotice] = useState(null);
   const isDesktop = useIsDesktop();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Уведомление «фото не по тематике» приходит из ReportPage через navigate state
+  useEffect(() => {
+    const r = location.state?.rejected;
+    if (!r) return;
+    setNotice(r);
+    navigate(".", { replace: true, state: null }); // очистить, чтобы не повторялось
+    const t = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [location.state, navigate]);
 
   useEffect(() => {
     const ACTIVE = ["open", "pending", "in_process"];
@@ -233,6 +246,26 @@ export default function MapPage() {
       {error && (
         <div className="absolute left-1/2 top-20 z-floating -translate-x-1/2 rounded-xl bg-poor px-4 py-2 text-sm text-white shadow-card">
           {error}
+        </div>
+      )}
+
+      {/* «Фото не по тематике» — после отказа ИИ-фильтра */}
+      {notice && (
+        <div className="pointer-events-none absolute inset-x-3 z-floating flex justify-center" style={{ top: "calc(env(safe-area-inset-top) + 5.5rem)" }}>
+          <div className="pointer-events-auto flex animate-fade-up items-start gap-2.5 rounded-2xl border border-mid/40 bg-card/95 px-4 py-3 shadow-card-hover backdrop-blur-md dark:border-mid/40 dark:bg-nightcard/95">
+            <span className="mt-0.5 shrink-0 text-mid"><AlertIcon size={20} /></span>
+            <div className="min-w-0">
+              <div className="text-[13px] font-bold text-ink dark:text-white">Запрос не по тематике</div>
+              <div className="mt-0.5 text-[13px] leading-snug text-ink-2 dark:text-night-ink-2">{notice}</div>
+            </div>
+            <button
+              onClick={() => setNotice(null)}
+              aria-label="Закрыть"
+              className="-mr-1 -mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full text-ink-3 transition-colors hover:bg-ink/[0.06] hover:text-ink dark:text-night-ink-3 dark:hover:bg-white/10"
+            >
+              <XIcon size={15} />
+            </button>
+          </div>
         </div>
       )}
 

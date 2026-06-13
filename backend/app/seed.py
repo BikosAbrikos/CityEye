@@ -1,12 +1,18 @@
-"""Сид: 6 районов Алматы, 26 проблем, 1 admin-пользователь.
+"""Сид: 6 районов Алматы + компактный набор демо-заявок + admin.
+
+Заявки намеренно «старые» (дата в прошлом) и НЕ в статусе pending —
+они уже в работе или закрыты. Так фильтр «Новые» в кабинете акимата
+остаётся пустым, и живые заявки, отправленные на защите, видны сразу.
 
 Запуск: python -m app.seed
 """
+from datetime import datetime, timedelta
+
 from . import model as ai_model
 from .auth import hash_password
 from .db import SessionLocal, init_db
 from .index import recalc_all
-from .models import District, Problem, User
+from .models import District, Message, Problem, User
 
 
 def _rect(clng, clat, dlng, dlat):
@@ -26,59 +32,55 @@ DISTRICTS = [
     ("Алатауский",     76.8700, 43.3050, 0.035, 0.025),
 ]
 
-# (type, severity, description, lat, lng, status)
+# (type, severity, description, lat, lng, status, age_days)
+# Заявки отражают реальные находки ресёрча по районам. Все «старые» и НЕ pending
+# (in_process / completed / rejected), поэтому фильтр «Новые» пуст, а индекс в
+# покое равен базовым значениям из RESEARCH_BASE (index.py).
 PROBLEMS = [
-    # Алмалинский — умеренная нагрузка
-    ("pothole",     "low",    "Выбоина на ул. Абая у Фурманова",           43.2580, 76.9290, "pending"),
-    ("garbage",     "low",    "Переполненные баки во дворе",               43.2545, 76.9250, "in_process"),
-    ("streetlight", "low",    "Не горит фонарь у сквера",                  43.2600, 76.9330, "completed"),
-    ("graffiti",    "medium", "Граффити на фасаде жилого дома",            43.2555, 76.9210, "pending"),
-    # Бостандыкский — зелёный
-    ("pothole",     "low",    "Небольшая яма на проспекте аль-Фараби",     43.2080, 76.9100, "pending"),
-    ("garbage",     "medium", "Мусор у рынка",                             43.2020, 76.8980, "in_process"),
-    ("sign",        "medium", "Сбит дорожный знак на перекрёстке",         43.2120, 76.9150, "pending"),
-    ("streetlight", "low",    "Тёмный участок вдоль аллеи",                43.2000, 76.9050, "completed"),
-    ("graffiti",    "low",    "Теги на остановке",                         43.2055, 76.9120, "rejected"),
-    # Медеуский — самый зелёный
-    ("pothole",     "low",    "Небольшая выбоина у Достык",                43.2300, 76.9580, "completed"),
-    ("garbage",     "low",    "Мусор у входа в парк",                      43.2250, 76.9650, "pending"),
-    ("streetlight", "low",    "Мигает один фонарь",                        43.2330, 76.9600, "in_process"),
-    ("sign",        "low",    "Выцвел знак пешеходного перехода",          43.2270, 76.9550, "pending"),
-    # Ауэзовский — красный
-    ("pothole",     "high",   "Крупная яма на ул. Алтынсарина",            43.2230, 76.8520, "pending"),
-    ("garbage",     "high",   "Несанкционированная свалка во дворе",       43.2280, 76.8600, "in_process"),
-    ("streetlight", "high",   "Не работает освещение у школы",             43.2200, 76.8480, "pending"),
-    ("graffiti",    "medium", "Вандализм на детской площадке",             43.2250, 76.8560, "pending"),
-    # Турксибский — янтарь
-    ("pothole",     "medium", "Яма у железнодорожного вокзала",            43.3010, 76.9460, "pending"),
-    ("garbage",     "high",   "Завалы мусора у гаражей",                   43.2980, 76.9400, "in_process"),
-    ("sign",        "medium", "Повреждён знак на оживлённом перекрёстке",  43.3030, 76.9500, "pending"),
-    ("streetlight", "low",    "Мигает фонарь у дома",                      43.2960, 76.9430, "completed"),
-    # Алатауский — красный
-    ("pothole",     "high",   "Разбитая дорога в новом микрорайоне",       43.3060, 76.8700, "pending"),
-    ("garbage",     "high",   "Не вывозят мусор неделю",                   43.3020, 76.8650, "in_process"),
-    ("streetlight", "high",   "Нет освещения на целой улице",              43.3090, 76.8750, "pending"),
-    ("sign",        "medium", "Отсутствует знак ограничения скорости",     43.3040, 76.8600, "pending"),
+    # Алмалинский (база 71) — лучший центр, мелочи
+    ("streetlight", "low",    "Не горит фонарь у сквера на Абая",                43.2600, 76.9330, "in_process",  9),
+    ("graffiti",    "low",    "Граффити на фасаде в центре — закрашено",         43.2555, 76.9210, "completed",  30),
+    # Бостандыкский (63) — жалобы на освещение
+    ("streetlight", "medium", "Жалобы на негорящие фонари во дворах",            43.2080, 76.9100, "in_process",  8),
+    ("garbage",     "low",    "Переполнен бак у рынка — вывезено",               43.2020, 76.8980, "completed",  25),
+    # Медеуский (63) — горные мкр, вода/дороги
+    ("pothole",     "high",   "Размытая дорога в мкр Каменское плато",           43.2300, 76.9580, "in_process", 14),
+    ("sign",        "low",    "Выцвел знак перехода у Достык — заменён",         43.2270, 76.9550, "completed",  35),
+    # Ауэзовский (59) — плотный, Сайран
+    ("garbage",     "high",   "Санитарное состояние у автовокзала Сайран",       43.2230, 76.8520, "in_process", 10),
+    ("pothole",     "medium", "Ямы во дворах старого жилфонда",                  43.2280, 76.8600, "in_process", 17),
+    # Турксибский (52) — свалки, ветхое жильё, воздух
+    ("garbage",     "high",   "Стихийная свалка в мкр Кайрат (ул. Челюскин)",    43.3010, 76.9460, "in_process", 12),
+    ("pothole",     "high",   "Разбитая дорога в промзоне",                      43.3030, 76.9500, "in_process", 19),
+    # Алатауский (41) — грунтовки, нет освещения, дефицит сетей
+    ("pothole",     "high",   "Грунтовая дорога без асфальта (мкр Рахат)",       43.3060, 76.8700, "in_process", 21),
+    ("streetlight", "high",   "Нет уличного освещения на улице",                 43.3090, 76.8750, "in_process",  7),
+    ("garbage",     "high",   "Стихийная свалка в частном секторе",              43.3020, 76.8650, "in_process", 15),
 ]
 
-# Демо-яма для дедупа (уже с 2 «объединёнными» дубликатами)
+# Демо-яма для дедупа (старая, уже в работе, с 2 «объединёнными» дублями)
 DEDUP_CASE = {
     "type": "pothole", "severity": "high",
     "description": "Огромная яма на ул. Толе би возле остановки",
-    "lat": 43.2510, "lng": 76.9450, "status": "in_process",
+    "lat": 43.2510, "lng": 76.9450, "status": "in_process", "age_days": 16,
 }
+
+
+def _ago(days):
+    return datetime.utcnow() - timedelta(days=days)
 
 
 def run():
     init_db()
     db = SessionLocal()
     try:
+        # Чистим заявки и их сообщения (FK), районы оставляем пересоздать.
+        # Пользователей НЕ трогаем.
+        db.query(Message).delete()
         db.query(Problem).delete()
         db.query(District).delete()
-        # Сохраняем пользователей — не удаляем при пересиде
         db.commit()
 
-        # Создаём районы
         for name, clng, clat, dlng, dlat in DISTRICTS:
             db.add(District(
                 name=name, geometry=_rect(clng, clat, dlng, dlat),
@@ -86,18 +88,17 @@ def run():
             ))
         db.commit()
 
-        # Создаём проблемы
         from .index import assign_district
-        for ptype, sev, desc, lat, lng, status in PROBLEMS:
+        for ptype, sev, desc, lat, lng, status, age in PROBLEMS:
             emb = ai_model.embed(f"{ptype}. {desc}")
             did = assign_district(db, lat, lng)
             db.add(Problem(
                 type=ptype, severity=sev, description=desc,
                 lat=lat, lng=lng, status=status,
                 district_id=did, embedding=emb,
+                created_at=_ago(age),
             ))
 
-        # Демо-яма с дедупом
         emb = ai_model.embed(f"{DEDUP_CASE['type']}. {DEDUP_CASE['description']}")
         did = assign_district(db, DEDUP_CASE["lat"], DEDUP_CASE["lng"])
         db.add(Problem(
@@ -106,13 +107,12 @@ def run():
             lat=DEDUP_CASE["lat"], lng=DEDUP_CASE["lng"],
             status=DEDUP_CASE["status"], district_id=did,
             embedding=emb, duplicate_count=2,
+            created_at=_ago(DEDUP_CASE["age_days"]),
         ))
         db.commit()
 
-        # Пересчёт индексов
         recalc_all(db)
 
-        # Создаём admin-пользователя (если ещё нет)
         if not db.query(User).filter(User.email == "admin@cityeye.kz").first():
             db.add(User(
                 username="admin",
@@ -126,8 +126,7 @@ def run():
             print("[seed] admin уже существует")
 
         n_p = db.query(Problem).count()
-        print(f"[seed] готово: районов={len(DISTRICTS)}, проблем={n_p}")
-        print(f"[seed] деdup-кейс: яма на Толе би ({DEDUP_CASE['lat']}, {DEDUP_CASE['lng']})")
+        print(f"[seed] готово: районов={len(DISTRICTS)}, проблем={n_p} (все старые, без 'Новых')")
     finally:
         db.close()
 

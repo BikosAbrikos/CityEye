@@ -81,11 +81,19 @@ def _get_client():
 # ---------------------------------------------------------------------------
 
 VISION_PROMPT = (
-    "Ты — система классификации городских инфраструктурных проблем для приложения CityEye (Алматы).\n"
-    "Посмотри на фото и верни СТРОГО JSON без markdown и пояснений:\n"
-    '{"type": <одно из: pothole, garbage, streetlight, graffiti, sign, other>, '
-    '"severity": <одно из: low, medium, high>, '
-    '"description": <описание на русском, до 120 символов>}\n\n'
+    "Ты — система приёма заявок о городских инфраструктурных проблемах CityEye (Алматы).\n"
+    "ШАГ 1. Реши, относится ли фото к РЕАЛЬНОЙ городской/коммунальной проблеме на улице: "
+    "яма, мусор/свалка, неработающий фонарь, граффити/вандализм, повреждённый знак или "
+    "разметка, разбитая инфраструктура и т.п.\n"
+    "НЕ относятся (relevant=false): селфи и портреты людей, животные, еда, скриншоты, "
+    "мемы, текст/документы, помещения без видимой проблемы, случайные предметы, "
+    "природа без нарушения. Если сомневаешься и проблемы не видно — relevant=false.\n"
+    "ШАГ 2. Верни СТРОГО JSON без markdown и пояснений:\n"
+    '{"relevant": <true|false>, '
+    '"type": <pothole, garbage, streetlight, graffiti, sign, other>, '
+    '"severity": <low, medium, high>, '
+    '"description": <описание на русском, до 120 символов>, '
+    '"reason": <если relevant=false — короткая причина на русском; иначе "">}\n\n'
     "type — главный объект проблемы: pothole=яма, garbage=мусор, streetlight=фонарь, "
     "graffiti=граффити/вандализм, sign=знак/разметка, other=всё остальное.\n"
     "severity — срочность: low=косметика, medium=неудобство, high=опасность/авария.\n"
@@ -175,14 +183,22 @@ def _parse_vision_response(raw: str) -> dict:
 
     data = json.loads(raw[start : end + 1])
 
+    # relevant: принимаем bool или строку ("false"/"нет"/"0" → False)
+    rel = data.get("relevant", True)
+    if isinstance(rel, str):
+        rel = rel.strip().lower() not in ("false", "no", "0", "нет", "")
+    relevant = bool(rel)
+
     # Валидируем значения — принимаем только допустимые
     ptype = str(data.get("type", "other")).lower()
     severity = str(data.get("severity", "medium")).lower()
 
     return {
+        "relevant": relevant,
         "type": ptype if ptype in PROBLEM_TYPES else "other",
         "severity": severity if severity in SEVERITIES else "medium",
         "description": str(data.get("description", "")).strip()[:200],
+        "reason": str(data.get("reason", "")).strip()[:200],
     }
 
 
@@ -239,10 +255,14 @@ def _mock_analyze(image_bytes: bytes) -> dict:
     h = int(hashlib.md5(image_bytes).hexdigest(), 16)
     ptype = _MOCK_TYPES[h % len(_MOCK_TYPES)]
     severity = SEVERITIES[(h >> 8) % len(SEVERITIES)]
+    # Mock «не видит» пикселей → считаем фото релевантным (фильтр спама
+    # работает только с реальным ключом OpenAI).
     return {
+        "relevant": True,
         "type": ptype,
         "severity": severity,
         "description": _MOCK_DESCRIPTIONS[ptype],
+        "reason": "",
     }
 
 

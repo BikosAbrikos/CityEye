@@ -78,9 +78,11 @@ class MessageIn(BaseModel):
 
 
 class AnalyzeOut(BaseModel):
+    relevant: bool = True
     type: str
     severity: str
     description: str
+    reason: str = ""
 
 
 class ReportOut(BaseModel):

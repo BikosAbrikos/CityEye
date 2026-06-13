@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import LocationPicker from "../components/LocationPicker.jsx";
 import { Button } from "../components/ui/Button.jsx";
 import { Textarea } from "../components/ui/Field.jsx";
@@ -44,6 +44,7 @@ export default function ReportPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   function onFile(e) {
     const f = e.target.files?.[0];
@@ -63,6 +64,17 @@ export default function ReportPage() {
     const t0 = Date.now();
     try {
       const data = await api.analyze(file, preDescription);
+      // ИИ-фильтр спама: фото не по тематике → не даём отправить, уводим на карту
+      if (data.relevant === false) {
+        navigate("/", {
+          state: {
+            rejected:
+              data.reason ||
+              "Это фото не похоже на городскую проблему — заявка не отправлена.",
+          },
+        });
+        return;
+      }
       setCard({ ...data, description: preDescription.trim() || data.description });
       setAnalyzeTime(((Date.now() - t0) / 1000).toFixed(1));
     } catch {
