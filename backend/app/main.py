@@ -73,4 +73,10 @@ def _startup():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    from .config import settings
+    return {
+        "status": "ok",
+        "supabase_url_set": bool(settings.supabase_url),
+        "supabase_key_set": bool(settings.supabase_service_key),
+        "openai_set": settings.has_openai,
+    }
