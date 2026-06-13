@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { BUCKET_COLOR, SEVERITY_COLOR } from "../lib/colors.js";
+import { BUCKET_COLOR, SEVERITY_COLOR, bucketOf } from "../lib/colors.js";
 import { ALMATY_CENTER } from "../lib/api.js";
+import { ALMATY_DISTRICTS } from "../lib/almaty-districts.js";
 import { useTheme } from "../lib/theme.jsx";
 
 const STYLES = {
@@ -10,18 +11,22 @@ const STYLES = {
   dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
 };
 
-// Камера сохраняется между перемонтированиями (смена темы пересоздаёт карту)
 const camera = { center: [ALMATY_CENTER[1], ALMATY_CENTER[0]], zoom: 11.4 };
 
-function districtsToGeoJSON(districts) {
+// Реальные границы (статика) + цвет/счёт из бэкенда, сшивка по имени района.
+function districtsToGeoJSON(backend) {
+  const byName = Object.fromEntries(backend.map((d) => [d.name, d]));
   return {
     type: "FeatureCollection",
-    features: districts.map((d) => ({
-      type: "Feature",
-      id: d.id,
-      properties: { color: BUCKET_COLOR[d.bucket] },
-      geometry: { type: "Polygon", coordinates: d.geometry },
-    })),
+    features: ALMATY_DISTRICTS.features.map((f) => {
+      const d = byName[f.properties.name];
+      const color = d ? BUCKET_COLOR[d.bucket || bucketOf(d.index_score)] : "#9aa1ab";
+      return {
+        type: "Feature",
+        properties: { name: f.properties.name, color, did: d?.id ?? null },
+        geometry: f.geometry,
+      };
+    }),
   };
 }
 
@@ -37,11 +42,9 @@ export default function MapView({
   const markersRef = useRef([]);
   const { theme } = useTheme();
 
-  // refs чтобы обработчики кликов видели свежие коллбэки без переподписки
   const cbRef = useRef({});
   cbRef.current = { onSelectDistrict, onSelectProblem, districts, problems };
 
-  // Инициализация карты — пересоздаём при смене темы
   useEffect(() => {
     const map = new maplibregl.Map({
       container: containerRef.current,
@@ -50,10 +53,7 @@ export default function MapView({
       zoom: camera.zoom,
       attributionControl: { compact: true },
     });
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right"
-    );
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
     map.on("moveend", () => {
       camera.center = map.getCenter().toArray();
       camera.zoom = map.getZoom();
@@ -68,7 +68,7 @@ export default function MapView({
         id: "district-fill",
         type: "fill",
         source: "districts",
-        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.14 },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.13 },
       });
       map.addLayer({
         id: "district-line",
@@ -76,8 +76,8 @@ export default function MapView({
         source: "districts",
         paint: {
           "line-color": ["get", "color"],
-          "line-width": 1.5,
-          "line-opacity": 0.7,
+          "line-width": 2,
+          "line-opacity": 0.85,
         },
       });
 
@@ -110,25 +110,19 @@ export default function MapView({
       map.on("click", "problem-dot", (e) => {
         const id = e.features?.[0]?.properties?.pid;
         const p = cbRef.current.problems.find((x) => x.id === id);
-        if (p) {
-          cbRef.current.onSelectProblem?.(p);
-          e.preventDefault();
-        }
+        if (p) { cbRef.current.onSelectProblem?.(p); e.preventDefault(); }
       });
       map.on("click", "district-fill", (e) => {
         if (e.defaultPrevented) return;
-        const id = e.features?.[0]?.id;
-        const d = cbRef.current.districts.find((x) => x.id === id);
+        const name = e.features?.[0]?.properties?.name;
+        const d = cbRef.current.districts.find((x) => x.name === name);
         if (d) cbRef.current.onSelectDistrict?.(d);
       });
-      map.on("mouseenter", "problem-dot", () => {
-        map.getCanvas().style.cursor = "pointer";
-      });
-      map.on("mouseleave", "problem-dot", () => {
-        map.getCanvas().style.cursor = "";
-      });
+      map.on("mouseenter", "problem-dot", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "problem-dot", () => { map.getCanvas().style.cursor = ""; });
+      map.on("mouseenter", "district-fill", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "district-fill", () => { map.getCanvas().style.cursor = ""; });
 
-      // данные могли прийти раньше, чем загрузился стиль
       syncData(map, cbRef.current);
     });
 
@@ -151,50 +145,50 @@ export default function MapView({
         type: "FeatureCollection",
         features: problems.map((p) => ({
           type: "Feature",
-          properties: {
-            pid: p.id,
-            color: SEVERITY_COLOR[p.severity],
-            dups: p.duplicate_count || 0,
-          },
+          properties: { pid: p.id, color: SEVERITY_COLOR[p.severity], dups: p.duplicate_count || 0 },
           geometry: { type: "Point", coordinates: [p.lng, p.lat] },
         })),
       });
     }
 
-    // бейджи районов — HTML-маркеры
+    // Бейджи районов — HTML-маркеры. Метка на центроиде из бэкенда (в черте города).
+    // ВАЖНО: на корневом el маркера НЕТ transition — иначе позиция от MapLibre
+    // анимируется и метка «тянется» за картой. Hover-scale живёт на .dlabel внутри.
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = districts.map((d) => {
-      const el = document.createElement("div");
-      el.className = "dlabel";
-      el.style.setProperty("--dc", BUCKET_COLOR[d.bucket]);
-      el.innerHTML = `
+      const root = document.createElement("div");
+      root.style.cursor = "pointer";
+      root.style.willChange = "transform";
+      const inner = document.createElement("div");
+      inner.className = "dlabel";
+      inner.style.setProperty("--dc", BUCKET_COLOR[d.bucket || bucketOf(d.index_score)]);
+      inner.innerHTML = `
         <div class="dlabel-score">${Math.round(d.index_score)}<span class="dlabel-max">/100</span></div>
         <div class="dlabel-name">${d.name}</div>`;
-      el.addEventListener("click", (e) => {
+      root.appendChild(inner);
+      root.addEventListener("click", (e) => {
         e.stopPropagation();
         cbRef.current.onSelectDistrict?.(d);
       });
-      return new maplibregl.Marker({ element: el })
+      return new maplibregl.Marker({ element: root })
         .setLngLat([d.centroid_lng, d.centroid_lat])
         .addTo(map);
     });
   }
 
-  // Обновление данных при изменении props
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     syncData(map, { districts, problems });
   }, [districts, problems]);
 
-  // Перелёт к выбранному району
   useEffect(() => {
     const map = mapRef.current;
     if (map && flyTo) {
       map.flyTo({
         center: [flyTo.lng, flyTo.lat],
         zoom: Math.max(map.getZoom(), 12.3),
-        duration: 900,
+        duration: 800,
       });
     }
   }, [flyTo]);

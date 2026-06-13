@@ -49,7 +49,7 @@ function AkimatLogin() {
     "w-full rounded-xl border border-navy-line bg-navy-2/60 px-4 py-3 text-white outline-none transition-colors placeholder:text-white/35 focus:border-steel focus:ring-2 focus:ring-steel/30";
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-navy px-4">
+    <div className="flex h-dvh items-center justify-center overflow-y-auto bg-navy px-4">
       <div className="w-full max-w-sm space-y-7">
         <div className="flex flex-col items-center text-center">
           <LogoMark size={56} />
@@ -202,9 +202,9 @@ function Queue() {
   }
 
   return (
-    <div className="min-h-dvh bg-slate">
+    <div className="h-dvh overflow-y-auto bg-slate">
       {/* Top bar */}
-      <header className="sticky top-0 z-nav bg-navy px-4 py-3.5 md:px-8">
+      <header className="sticky top-0 z-nav bg-navy px-4 py-3.5 md:px-8" style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.875rem)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-3">
             <LogoMark size={36} />
@@ -270,7 +270,7 @@ export default function AkimatPage() {
 
   if (loading) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-navy">
+      <div className="grid h-dvh place-items-center bg-navy">
         <Spinner size={26} className="text-white/60" />
       </div>
     );

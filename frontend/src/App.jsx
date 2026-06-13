@@ -87,8 +87,8 @@ export default function App() {
         </NavLink>
       </header>
 
-      {/* Page content */}
-      <main className="relative min-h-0 flex-1">
+      {/* Page content. Карта — full-bleed (под статус-бар); остальное уводим из-под чёлки. */}
+      <main className={`relative min-h-0 flex-1 ${onMap ? "" : "pt-safe md:pt-0"}`}>
         <Outlet />
       </main>
 

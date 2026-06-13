@@ -192,7 +192,7 @@ export default function MapPage() {
       </div>
 
       {/* Floating header chip */}
-      <div className="pointer-events-none absolute left-3 top-3 z-floating md:left-4 md:top-4">
+      <div className="pointer-events-none absolute left-3 top-safe z-floating md:left-4 md:top-4">
         <div className="pointer-events-auto flex items-center gap-3 rounded-2xl border border-line/80 bg-card/92 py-2 pl-3 pr-4 shadow-card backdrop-blur-md dark:border-night-line/80 dark:bg-nightcard/92">
           {cityAvg != null && (
             <div className="flex flex-col items-center rounded-xl px-2 py-1" style={{ background: `${BUCKET_COLOR[bucketOf(cityAvg)]}1A` }}>

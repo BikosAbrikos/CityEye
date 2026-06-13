@@ -56,10 +56,10 @@ export function BottomSheet({
       ref={ref}
       className="absolute inset-x-0 bottom-0 z-sheet flex flex-col rounded-t-[26px] border-t border-line bg-card shadow-sheet dark:border-night-line dark:bg-nightcard"
       style={{
-        height: `${heightVh}vh`,
+        height: `${heightVh}dvh`,
         transform: dragPx != null ? `translateY(${dragPx}px)` : restingTransform,
         transition: dragPx != null ? "none" : "transform 0.42s var(--ease-drawer)",
-        touchAction: "none",
+        willChange: "transform",
       }}
     >
       {/* Ручка / заголовок — зона захвата */}

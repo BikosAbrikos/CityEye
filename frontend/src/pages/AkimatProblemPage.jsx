@@ -134,12 +134,12 @@ function Detail() {
   }
 
   if (loading) {
-    return <div className="grid min-h-dvh place-items-center bg-slate"><Spinner size={24} className="text-navy" /></div>;
+    return <div className="grid h-dvh place-items-center bg-slate"><Spinner size={24} className="text-navy" /></div>;
   }
 
   if (error || !problem) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-slate">
+      <div className="flex h-dvh flex-col items-center justify-center gap-3 overflow-y-auto bg-slate">
         <div className="text-sm text-ink-2">{error || "Заявка не найдена"}</div>
         <Button to="/akimat" variant="navy" leftIcon={<ArrowLeftIcon size={18} />}>К очереди</Button>
       </div>
@@ -150,8 +150,8 @@ function Detail() {
   const sevColor = SEVERITY_COLOR[problem.severity];
 
   return (
-    <div className="min-h-dvh bg-slate">
-      <header className="bg-navy px-4 py-3.5 md:px-8">
+    <div className="h-dvh overflow-y-auto bg-slate">
+      <header className="bg-navy px-4 py-3.5 md:px-8" style={{ paddingTop: "calc(env(safe-area-inset-top) + 0.875rem)" }}>
         <div className="mx-auto flex max-w-5xl items-center justify-between">
           <Link to="/akimat" className="flex items-center gap-2 text-white/80 transition-colors hover:text-white">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-white/10"><ArrowLeftIcon size={17} /></span>
@@ -270,7 +270,7 @@ function Detail() {
 export default function AkimatProblemPage() {
   const { user, loading } = useAuth();
   if (loading) {
-    return <div className="grid min-h-dvh place-items-center bg-navy"><Spinner size={26} className="text-white/60" /></div>;
+    return <div className="grid h-dvh place-items-center bg-navy"><Spinner size={26} className="text-white/60" /></div>;
   }
   if (!user?.is_admin) return <Navigate to="/akimat" replace />;
   return <Detail />;

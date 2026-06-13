@@ -9,10 +9,20 @@
 }
 
 @layer base {
+  html, body, #root { height: 100%; }
+  html { -webkit-text-size-adjust: 100%; }
+  /* App-shell: тело не скроллится и не «резинит» — скролл живёт во внутренних
+     контейнерах. Делает мобильную версию ближе к нативному приложению. */
   body {
     @apply bg-canvas text-ink font-sans antialiased;
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
     text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
   }
+  #root { overflow: hidden; }
   .dark body {
     @apply bg-night text-white;
   }
@@ -36,6 +46,10 @@
   }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
+  /* Safe-area (чёлка / home-indicator на iPhone) */
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .top-safe { top: calc(env(safe-area-inset-top) + 0.75rem); }
 }
 
 /* Тонкий скроллбар для панелей */
