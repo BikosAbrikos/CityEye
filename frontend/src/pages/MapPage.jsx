@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import MapView from "../components/MapView.jsx";
+import OnboardingVideo from "../components/OnboardingVideo.jsx";
 import { SeverityBadge, StatusBadge, DupBadge } from "../components/ui/Badge.jsx";
 import { BottomSheet } from "../components/ui/BottomSheet.jsx";
 import { Spinner } from "../components/ui/Spinner.jsx";
@@ -141,6 +142,9 @@ export default function MapPage() {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [onboard, setOnboard] = useState(
+    () => !localStorage.getItem("cityeye_onboarded_v1")
+  );
   const isDesktop = useIsDesktop();
 
   useEffect(() => {
@@ -277,6 +281,17 @@ export default function MapPage() {
         >
           <PanelBody districts={sorted} stats={stats} selected={selected} onSelect={selectDistrict} />
         </BottomSheet>
+      )}
+
+      {/* One-time онбординг-видео при первом запуске */}
+      {onboard && (
+        <OnboardingVideo
+          src={`${import.meta.env.BASE_URL}demo_video.mp4`}
+          onClose={() => {
+            localStorage.setItem("cityeye_onboarded_v1", "1");
+            setOnboard(false);
+          }}
+        />
       )}
     </div>
   );

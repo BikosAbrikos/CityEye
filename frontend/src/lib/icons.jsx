@@ -173,6 +173,24 @@ export const InboxIcon = (p) => (
   </Icon>
 );
 
+export const PlayIcon = (p) => (
+  <Icon {...p}>
+    <path d="M7 5.5v13l11-6.5-11-6.5Z" />
+  </Icon>
+);
+export const VolumeIcon = (p) => (
+  <Icon {...p}>
+    <path d="M5 9v6h3.5L13 19V5L8.5 9H5Z" />
+    <path d="M16.5 8.5a4.5 4.5 0 0 1 0 7M19 6a8 8 0 0 1 0 12" />
+  </Icon>
+);
+export const VolumeMuteIcon = (p) => (
+  <Icon {...p}>
+    <path d="M5 9v6h3.5L13 19V5L8.5 9H5Z" />
+    <path d="m16.5 9.5 4 4M20.5 9.5l-4 4" />
+  </Icon>
+);
+
 /* ── Иконки типов проблем (заменяют эмодзи TYPE_ICONS) ── */
 const PotholeIcon = (p) => (
   <Icon {...p}>
