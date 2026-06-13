@@ -109,9 +109,12 @@ function Queue() {
     merged: problems.reduce((s, p) => s + (p.duplicate_count || 0), 0),
   }), [problems]);
 
-  const visible = filter === "active"
-    ? problems.filter((p) => ["open", "pending", "in_process"].includes(p.status))
-    : problems;
+  const visible =
+    filter === "new"
+      ? problems.filter((p) => ["open", "pending"].includes(p.status))
+      : filter === "active"
+      ? problems.filter((p) => ["open", "pending", "in_process"].includes(p.status))
+      : problems;
 
   async function changeStatus(id, status) {
     setBusy(`${id}-${status}`);
@@ -171,7 +174,7 @@ function Queue() {
         <div className="flex items-center justify-between">
           <h2 className="font-display text-lg font-extrabold text-ink">Очередь заявок</h2>
           <div className="flex gap-1 rounded-xl bg-ink/8 p-1">
-            {[["active", "Активные"], ["all", "Все"]].map(([v, l]) => (
+            {[["new", "Новые"], ["active", "Активные"], ["all", "Все"]].map(([v, l]) => (
               <button
                 key={v}
                 onClick={() => setFilter(v)}
