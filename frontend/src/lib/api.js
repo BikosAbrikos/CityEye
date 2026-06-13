@@ -96,19 +96,14 @@ export const TYPE_LABELS = {
   graffiti: "Граффити", sign: "Знак", other: "Другое",
 };
 
-export const TYPE_ICONS = {
-  pothole: "🕳️", garbage: "🗑️", streetlight: "💡",
-  graffiti: "🎨", sign: "🚧", other: "📌",
-};
-
 export const SEVERITY_LABELS = { low: "Низкая", medium: "Средняя", high: "Высокая" };
 
 export const STATUS_META = {
-  open:       { label: "Принята",    color: "#F4A024", step: 0 },
-  pending:    { label: "Принята",    color: "#F4A024", step: 0 },
-  in_process: { label: "В работе",   color: "#4A90D9", step: 1 },
-  completed:  { label: "Завершена",  color: "#3FA07E", step: 2 },
-  rejected:   { label: "Отклонена", color: "#E1543B", step: -1 },
+  open:       { label: "Принята",    color: "#E0901A", step: 0 },
+  pending:    { label: "Принята",    color: "#E0901A", step: 0 },
+  in_process: { label: "В работе",   color: "#3E82CF", step: 1 },
+  completed:  { label: "Завершена",  color: "#2F9E73", step: 2 },
+  rejected:   { label: "Отклонена", color: "#DA4A36", step: -1 },
 };
 
 export const ALMATY_CENTER = [43.238, 76.889];

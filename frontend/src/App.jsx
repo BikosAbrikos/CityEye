@@ -1,41 +1,7 @@
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "./lib/auth.jsx";
-
-function MapIcon({ active }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <path
-        d="M8 3.5L3 5.5v13l5-2 6 2 5-2v-13l-5 2-6-2z"
-        stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round"
-        fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0}
-      />
-      <path d="M8 3.5v13M14 5.5v13" stroke="currentColor" strokeWidth="1.6" />
-    </svg>
-  );
-}
-function ListIcon({ active }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <rect
-        x="3.5" y="3.5" width="15" height="15" rx="3.5"
-        stroke="currentColor" strokeWidth="1.6"
-        fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0}
-      />
-      <path d="M7.5 8.5h7M7.5 11.5h7M7.5 14.5h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-function UserIcon({ active }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-      <circle
-        cx="11" cy="7.5" r="3.5" stroke="currentColor" strokeWidth="1.6"
-        fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0}
-      />
-      <path d="M4 19c.8-3.2 3.6-5 7-5s6.2 1.8 7 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { MapIcon, ListIcon, UserIcon } from "./lib/icons.jsx";
+import { Logo } from "./components/ui/Logo.jsx";
 
 const TABS = [
   { to: "/", label: "Карта", Icon: MapIcon },
@@ -49,15 +15,22 @@ function MobileTab({ to, label, Icon }) {
       to={to}
       end={to === "/"}
       className={({ isActive }) =>
-        `flex flex-1 flex-col items-center justify-center gap-1 py-2.5 transition ${
-          isActive ? "text-amber" : "text-ink/40 dark:text-white/35"
+        `group relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 transition-colors duration-200 ${
+          isActive ? "text-brand" : "text-ink-3 dark:text-night-ink-3"
         }`
       }
     >
       {({ isActive }) => (
         <>
-          <Icon active={isActive} />
-          <span className="text-[10px] font-semibold">{label}</span>
+          <span
+            className={`absolute top-0 h-[3px] w-8 rounded-full bg-brand transition-all duration-300 ease-out-quart ${
+              isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"
+            }`}
+          />
+          <span className="transition-transform duration-200 ease-out-quart group-active:scale-90">
+            <Icon size={23} strokeWidth={isActive ? 2.1 : 1.75} />
+          </span>
+          <span className="text-[10px] font-semibold tracking-tight">{label}</span>
         </>
       )}
     </NavLink>
@@ -70,10 +43,10 @@ function DesktopTab({ to, label }) {
       to={to}
       end={to === "/"}
       className={({ isActive }) =>
-        `rounded-full px-4 py-2 text-sm font-semibold transition ${
+        `rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 ${
           isActive
             ? "bg-ink text-white dark:bg-white dark:text-ink"
-            : "text-ink/60 hover:bg-ink/5 dark:text-white/60 dark:hover:bg-white/10"
+            : "text-ink-2 hover:bg-ink/[0.06] dark:text-night-ink-2 dark:hover:bg-white/10"
         }`
       }
     >
@@ -85,42 +58,31 @@ function DesktopTab({ to, label }) {
 export default function App() {
   const { user } = useAuth();
   const location = useLocation();
-  // На карте нижняя навигация плавает поверх, на остальных страницах — обычная
   const onMap = location.pathname === "/";
 
   return (
     <div className="flex h-dvh flex-col bg-canvas dark:bg-night">
       {/* Desktop top nav */}
-      <header className="hidden md:flex items-center justify-between border-b border-ink/10 bg-card px-6 py-3 shrink-0 dark:border-white/10 dark:bg-nightcard">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-amber text-white">
-            <span className="font-display text-lg font-extrabold">C</span>
-          </div>
-          <div>
-            <div className="font-display text-lg font-extrabold leading-none text-ink dark:text-white">
-              CityEye
-            </div>
-            <div className="num text-[10px] text-ink/40 dark:text-white/40">Алматы · пилот</div>
-          </div>
-        </div>
-        <nav className="flex items-center gap-1 rounded-full bg-canvas p-1 dark:bg-night">
+      <header className="z-nav hidden shrink-0 items-center justify-between border-b border-line bg-card/90 px-6 py-3 backdrop-blur-md md:flex dark:border-night-line dark:bg-nightcard/90">
+        <Logo />
+        <nav className="flex items-center gap-1 rounded-full bg-canvas p-1 dark:bg-night-2">
           {TABS.map((t) => (
             <DesktopTab key={t.to} to={t.to} label={t.label} />
           ))}
         </nav>
         <NavLink
           to={user ? "/profile" : "/auth"}
-          className="flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:opacity-85 transition dark:bg-white dark:text-ink"
+          className="flex items-center gap-2 rounded-full border border-line bg-card py-1.5 pl-1.5 pr-4 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-canvas-2 dark:border-night-line dark:bg-nightcard dark:text-white dark:hover:bg-night-2"
         >
           {user ? (
             <>
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber text-[10px] font-bold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
                 {user.username?.[0]?.toUpperCase()}
               </span>
               {user.username}
             </>
           ) : (
-            "Войти"
+            <span className="px-2">Войти</span>
           )}
         </NavLink>
       </header>
@@ -132,8 +94,8 @@ export default function App() {
 
       {/* Mobile bottom nav */}
       <nav
-        className={`flex md:hidden shrink-0 border-t border-ink/10 bg-card dark:border-white/10 dark:bg-nightcard ${
-          onMap ? "shadow-[0_-4px_20px_rgba(0,0,0,0.08)]" : ""
+        className={`z-nav flex shrink-0 border-t border-line bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden dark:border-night-line dark:bg-nightcard/95 ${
+          onMap ? "shadow-[0_-6px_24px_-8px_rgba(21,24,28,0.18)]" : ""
         }`}
       >
         {TABS.map((t) => (

@@ -1,17 +1,36 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import LocationPicker from "../components/LocationPicker.jsx";
-import { api, ALMATY_CENTER, TYPE_LABELS, TYPE_ICONS, SEVERITY_LABELS } from "../lib/api.js";
+import { Button } from "../components/ui/Button.jsx";
+import { Textarea } from "../components/ui/Field.jsx";
+import { Spinner } from "../components/ui/Spinner.jsx";
+import {
+  ArrowLeftIcon, ArrowRightIcon, CameraIcon, SparklesIcon,
+  RotateIcon, MapPinIcon, CheckIcon, TypeIcon,
+} from "../lib/icons.jsx";
+import { api, ALMATY_CENTER, TYPE_LABELS, SEVERITY_LABELS } from "../lib/api.js";
 import { SEVERITY_COLOR } from "../lib/colors.js";
 
 const TYPES = ["pothole", "garbage", "streetlight", "graffiti", "sign", "other"];
 const SEVS = ["low", "medium", "high"];
 const CONFIDENCE = { high: 94, medium: 83, low: 71 };
 
-const cardCls =
-  "rounded-2xl bg-card border border-ink/8 shadow-soft px-4 py-3 dark:bg-nightcard dark:border-white/10 dark:shadow-none";
-const labelCls =
-  "num text-[10px] font-semibold uppercase tracking-widest text-ink/40 dark:text-white/35 mb-2";
+/** Строка review-панели: лейбл слева, значение справа, инлайн-редактирование. */
+function Row({ label, editing, onEdit, children, edit }) {
+  return (
+    <div className="px-4 py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-[13px] font-semibold text-ink-3 dark:text-night-ink-3">{label}</span>
+        {!editing && onEdit && (
+          <button onClick={onEdit} className="text-[13px] font-semibold text-brand-ink dark:text-brand">
+            Изменить
+          </button>
+        )}
+      </div>
+      <div className="mt-2">{editing ? edit : children}</div>
+    </div>
+  );
+}
 
 export default function ReportPage() {
   const [file, setFile] = useState(null);
@@ -20,7 +39,7 @@ export default function ReportPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeTime, setAnalyzeTime] = useState(null);
   const [card, setCard] = useState(null);
-  const [editing, setEditing] = useState(null); // "type" | "severity" | "location" | null
+  const [editing, setEditing] = useState(null);
   const [pos, setPos] = useState(ALMATY_CENTER);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
@@ -44,7 +63,6 @@ export default function ReportPage() {
     const t0 = Date.now();
     try {
       const data = await api.analyze(file, preDescription);
-      // Сохраняем слова гражданина как стартовое описание, если он их ввёл
       setCard({ ...data, description: preDescription.trim() || data.description });
       setAnalyzeTime(((Date.now() - t0) / 1000).toFixed(1));
     } catch {
@@ -78,320 +96,279 @@ export default function ReportPage() {
   }
 
   const step = !preview ? 0 : !card ? 1 : 2;
+  const stepText = ["Загрузите фото проблемы", "Опишите и запустите ИИ", "Проверьте и отправьте"][step];
 
   return (
-    <div className="min-h-full overflow-y-auto bg-canvas dark:bg-night">
-      <div className="mx-auto max-w-lg pb-8">
-
-        {/* ── Header ── */}
-        <div className="flex items-center gap-3 px-4 pb-4 pt-5">
+    <div className="h-full overflow-y-auto bg-canvas dark:bg-night">
+      <div className="mx-auto max-w-lg px-4 pb-10">
+        {/* Header */}
+        <div className="flex items-center gap-3 pb-4 pt-5">
           <Link
             to="/"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card text-ink shadow-soft dark:bg-nightcard dark:text-white"
+            aria-label="Назад к карте"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line bg-card text-ink shadow-card transition-colors hover:bg-canvas-2 dark:border-night-line dark:bg-nightcard dark:text-white"
           >
-            ←
+            <ArrowLeftIcon size={18} />
           </Link>
-          <div>
-            <div className="num text-[10px] font-semibold uppercase tracking-widest text-ink/40 dark:text-white/35">
-              {step === 0 && "Шаг 1 из 2 · Загрузите фото"}
-              {step === 1 && "Шаг 1 из 2 · Опишите и анализируйте"}
-              {step === 2 && "Шаг 2 из 2 · Проверьте данные"}
-            </div>
-            <h1 className="font-display text-xl font-extrabold text-ink dark:text-white">
+          <div className="min-w-0">
+            <h1 className="font-display text-xl font-extrabold leading-tight text-ink dark:text-white">
               Новая заявка
             </h1>
+            <div className="text-[13px] text-ink-2 dark:text-night-ink-2">{stepText}</div>
           </div>
         </div>
 
+        {/* Step progress */}
+        {!result && (
+          <div className="mb-4 flex gap-1.5">
+            {[0, 1].map((i) => (
+              <div key={i} className="h-1.5 flex-1 overflow-hidden rounded-full bg-ink/[0.08] dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-brand transition-[width] duration-500 ease-out-expo"
+                  style={{ width: step > i ? "100%" : step === i ? "45%" : "0%" }}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         {!result ? (
-          <div className="space-y-3 px-4">
-            {/* ── Photo block ── */}
-            <label className="relative block cursor-pointer overflow-hidden rounded-2xl border border-ink/8 bg-card shadow-soft dark:border-white/10 dark:bg-nightcard dark:shadow-none">
+          <div className="space-y-3">
+            {/* Photo */}
+            <label className="relative block cursor-pointer overflow-hidden rounded-2xl border border-line bg-card shadow-card transition-shadow hover:shadow-card-hover dark:border-night-line dark:bg-nightcard">
               <input type="file" accept="image/*" className="hidden" onChange={onFile} />
               {preview ? (
                 <>
-                  <img src={preview} alt="" className="max-h-72 w-full object-cover" />
-                  {/* Scan overlay */}
+                  <img src={preview} alt="Фото проблемы" className="max-h-72 w-full object-cover" />
                   <div className="pointer-events-none absolute inset-0">
-                    <div className="scan-tl" />
-                    <div className="scan-tr" />
-                    <div className="scan-bl" />
-                    <div className="scan-br" />
+                    <div className="scan-tl" /><div className="scan-tr" /><div className="scan-bl" /><div className="scan-br" />
                     {analyzing && <div className="scan-line" />}
                     {card && !analyzing && (
-                      <div className="absolute left-3 top-3">
-                        <span className="rounded bg-amber px-2 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-white">
-                          {TYPE_LABELS[card.type]} · {CONFIDENCE[card.severity]}%
-                        </span>
-                      </div>
+                      <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg bg-brand px-2.5 py-1 text-[12px] font-bold text-white shadow-sm">
+                        <SparklesIcon size={14} strokeWidth={2} />
+                        {TYPE_LABELS[card.type]} · {CONFIDENCE[card.severity]}%
+                      </span>
                     )}
                   </div>
-                  {/* Footer */}
-                  <div className="flex items-center justify-between bg-black/55 px-3 py-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber" />
-                      <span className="num text-[11px] text-white/80">
-                        {analyzing
-                          ? "ИИ анализирует…"
-                          : analyzeTime
-                          ? `ИИ распознал объект за ${analyzeTime} с`
-                          : "Готово к анализу"}
-                      </span>
-                    </div>
-                    <span className="num cursor-pointer text-[11px] text-white/60">
-                      ↺ Переснять
+                  <div className="flex items-center justify-between bg-black/60 px-3.5 py-2.5">
+                    <span className="num flex items-center gap-2 text-[12px] text-white/85">
+                      {analyzing ? (
+                        <><Spinner size={13} className="text-brand" /> ИИ анализирует…</>
+                      ) : analyzeTime ? (
+                        <><CheckIcon size={14} className="text-good" /> Распознано за {analyzeTime}&nbsp;с</>
+                      ) : (
+                        "Готово к анализу"
+                      )}
+                    </span>
+                    <span className="num flex items-center gap-1 text-[12px] text-white/65">
+                      <RotateIcon size={13} /> Переснять
                     </span>
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center gap-2 py-14">
-                  <span className="text-4xl">📸</span>
+                <div className="flex flex-col items-center justify-center gap-2.5 py-16">
+                  <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/[0.12] text-brand">
+                    <CameraIcon size={28} strokeWidth={1.9} />
+                  </span>
                   <span className="font-display font-bold text-ink dark:text-white">
                     Нажмите, чтобы выбрать фото
                   </span>
-                  <span className="text-sm text-ink/40 dark:text-white/40">
-                    JPG / PNG — ИИ определит тип
+                  <span className="text-[13px] text-ink-2 dark:text-night-ink-2">
+                    JPG или PNG · ИИ определит тип проблемы
                   </span>
                 </div>
               )}
             </label>
 
-            {/* ── Описание до анализа + кнопка «Анализировать» ── */}
+            {/* Describe + analyze */}
             {preview && !card && (
               <>
-                <div className={cardCls}>
-                  <div className={labelCls}>Опишите проблему (необязательно)</div>
-                  <textarea
+                <div className="rounded-2xl border border-line bg-card p-4 shadow-card dark:border-night-line dark:bg-nightcard">
+                  <div className="mb-2 text-[13px] font-semibold text-ink-2 dark:text-night-ink-2">
+                    Описание <span className="font-normal text-ink-3 dark:text-night-ink-3">(необязательно)</span>
+                  </div>
+                  <Textarea
                     rows={3}
                     placeholder="Что случилось? Чем точнее опишете, тем точнее ИИ оценит важность."
-                    className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-ink/30 dark:text-white dark:placeholder:text-white/30"
                     value={preDescription}
                     onChange={(e) => setPreDescription(e.target.value)}
                   />
                 </div>
-
-                {error && (
-                  <div className="rounded-xl bg-poor/15 px-4 py-3 text-sm text-poor">
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  onClick={onAnalyze}
-                  disabled={analyzing}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-amber py-4 font-display text-base font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
+                {error && <ErrorNote>{error}</ErrorNote>}
+                <Button
+                  size="lg" fullWidth loading={analyzing} onClick={onAnalyze}
+                  rightIcon={!analyzing && <SparklesIcon size={20} strokeWidth={2} />}
                 >
-                  {analyzing ? "ИИ анализирует…" : (
-                    <>
-                      Анализировать
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-sm">✨</span>
-                    </>
-                  )}
-                </button>
+                  {analyzing ? "ИИ анализирует…" : "Анализировать"}
+                </Button>
               </>
             )}
 
-            {/* ── Info cards (after analysis) ── */}
+            {/* Review */}
             {card && !analyzing && (
               <>
-                {/* Type */}
-                <div className={cardCls}>
-                  <div className={labelCls}>Тип проблемы</div>
-                  {editing === "type" ? (
-                    <div className="flex flex-wrap gap-2 pb-1">
-                      {TYPES.map((t) => (
-                        <button
-                          key={t}
-                          onClick={() => { setCard({ ...card, type: t }); setEditing(null); }}
-                          className={`rounded-full px-3 py-1 text-sm font-semibold transition ${
-                            card.type === t
-                              ? "bg-amber text-white"
-                              : "bg-ink/5 text-ink/70 hover:bg-ink/10 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20"
-                          }`}
-                        >
-                          {TYPE_ICONS[t]} {TYPE_LABELS[t]}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 text-ink dark:text-white">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink/5 dark:bg-white/10">
-                          {TYPE_ICONS[card.type]}
-                        </div>
-                        <span className="font-semibold">{TYPE_LABELS[card.type]}</span>
+                <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card shadow-card dark:divide-night-line dark:border-night-line dark:bg-nightcard">
+                  <Row
+                    label="Тип проблемы"
+                    editing={editing === "type"}
+                    onEdit={() => setEditing("type")}
+                    edit={
+                      <div className="flex flex-wrap gap-2">
+                        {TYPES.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => { setCard({ ...card, type: t }); setEditing(null); }}
+                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                              card.type === t
+                                ? "bg-brand text-white"
+                                : "bg-ink/[0.05] text-ink-2 hover:bg-ink/[0.09] dark:bg-white/10 dark:text-night-ink-2 dark:hover:bg-white/15"
+                            }`}
+                          >
+                            <TypeIcon type={t} size={16} /> {TYPE_LABELS[t]}
+                          </button>
+                        ))}
                       </div>
-                      <button
-                        onClick={() => setEditing("type")}
-                        className="num text-xs font-semibold text-amber"
-                      >
-                        Изменить
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Severity */}
-                <div className={cardCls}>
-                  <div className={labelCls}>Важность · Оценка ИИ</div>
-                  {editing === "severity" ? (
-                    <div className="flex gap-2 pb-1">
-                      {SEVS.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => { setCard({ ...card, severity: s }); setEditing(null); }}
-                          className={`flex-1 rounded-full py-1.5 text-sm font-semibold transition ${
-                            card.severity === s
-                              ? "text-white"
-                              : "bg-ink/5 text-ink/60 hover:bg-ink/10 dark:bg-white/10 dark:text-white/60 dark:hover:bg-white/20"
-                          }`}
-                          style={card.severity === s ? { background: SEVERITY_COLOR[s] } : {}}
-                        >
-                          {SEVERITY_LABELS[s]}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide"
-                        style={{
-                          background: `${SEVERITY_COLOR[card.severity]}25`,
-                          color: SEVERITY_COLOR[card.severity],
-                        }}
-                      >
-                        <span
-                          className="h-1.5 w-1.5 rounded-full"
-                          style={{ background: SEVERITY_COLOR[card.severity] }}
-                        />
-                        {SEVERITY_LABELS[card.severity]}
+                    }
+                  >
+                    <div className="flex items-center gap-3 text-ink dark:text-white">
+                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-canvas-2 text-ink-2 dark:bg-white/10 dark:text-night-ink-2">
+                        <TypeIcon type={card.type} size={20} />
                       </span>
-                      <button
-                        onClick={() => setEditing("severity")}
-                        className="num text-xs font-semibold text-amber"
-                      >
-                        Изменить
-                      </button>
+                      <span className="font-semibold">{TYPE_LABELS[card.type]}</span>
                     </div>
-                  )}
-                </div>
+                  </Row>
 
-                {/* Location */}
-                <div className={cardCls}>
-                  <div className={labelCls}>Локация</div>
-                  {editing === "location" ? (
-                    <div className="space-y-2 pb-1">
-                      <LocationPicker position={pos} onPick={setPos} />
-                      <button
-                        onClick={() => setEditing(null)}
-                        className="w-full rounded-xl bg-amber py-2 text-sm font-semibold text-white"
-                      >
-                        Подтвердить
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-start gap-3 text-ink dark:text-white">
-                        <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg bg-ink/5 dark:bg-white/10">
-                          📍
-                        </div>
-                        <div>
-                          <div className="font-semibold">Алматы, Казахстан</div>
-                          <div className="num mt-0.5 text-xs text-ink/40 dark:text-white/40">
-                            {pos[0].toFixed(4)}, {pos[1].toFixed(4)}
-                          </div>
+                  <Row
+                    label="Важность · оценка ИИ"
+                    editing={editing === "severity"}
+                    onEdit={() => setEditing("severity")}
+                    edit={
+                      <div className="flex gap-2">
+                        {SEVS.map((s) => {
+                          const on = card.severity === s;
+                          return (
+                            <button
+                              key={s}
+                              onClick={() => { setCard({ ...card, severity: s }); setEditing(null); }}
+                              className={`flex-1 rounded-xl py-2 text-[13px] font-semibold transition-colors ${
+                                on
+                                  ? "text-white"
+                                  : "bg-ink/[0.05] text-ink-2 hover:bg-ink/[0.09] dark:bg-white/10 dark:text-night-ink-2 dark:hover:bg-white/15"
+                              }`}
+                              style={on ? { background: SEVERITY_COLOR[s] } : undefined}
+                            >
+                              {SEVERITY_LABELS[s]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    }
+                  >
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-bold"
+                      style={{ background: `${SEVERITY_COLOR[card.severity]}1A`, color: SEVERITY_COLOR[card.severity] }}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: SEVERITY_COLOR[card.severity] }} />
+                      {SEVERITY_LABELS[card.severity]}
+                    </span>
+                  </Row>
+
+                  <Row
+                    label="Локация"
+                    editing={editing === "location"}
+                    onEdit={() => setEditing("location")}
+                    edit={
+                      <div className="space-y-2">
+                        <LocationPicker position={pos} onPick={setPos} />
+                        <Button size="sm" fullWidth onClick={() => setEditing(null)}>Подтвердить точку</Button>
+                      </div>
+                    }
+                  >
+                    <div className="flex items-center gap-3 text-ink dark:text-white">
+                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-canvas-2 text-ink-2 dark:bg-white/10 dark:text-night-ink-2">
+                        <MapPinIcon size={20} />
+                      </span>
+                      <div>
+                        <div className="font-semibold">Алматы, Казахстан</div>
+                        <div className="num text-xs text-ink-3 dark:text-night-ink-3">
+                          {pos[0].toFixed(4)}, {pos[1].toFixed(4)}
                         </div>
                       </div>
-                      <button
-                        onClick={() => setEditing("location")}
-                        className="num shrink-0 text-xs font-semibold text-amber"
-                      >
-                        Изменить
-                      </button>
                     </div>
-                  )}
+                  </Row>
+
+                  <Row label="Описание">
+                    <Textarea
+                      rows={2}
+                      placeholder="Уточните проблему…"
+                      value={card.description || ""}
+                      onChange={(e) => setCard({ ...card, description: e.target.value })}
+                    />
+                  </Row>
                 </div>
 
-                {/* Description */}
-                <div className={cardCls}>
-                  <div className={labelCls}>Описание (необязательно)</div>
-                  <textarea
-                    rows={2}
-                    placeholder="Уточните проблему…"
-                    className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-ink/30 dark:text-white dark:placeholder:text-white/30"
-                    value={card.description || ""}
-                    onChange={(e) => setCard({ ...card, description: e.target.value })}
-                  />
-                </div>
-
-                {error && (
-                  <div className="rounded-xl bg-poor/15 px-4 py-3 text-sm text-poor">
-                    {error}
-                  </div>
-                )}
-
-                {/* Submit */}
-                <button
-                  onClick={onSubmit}
-                  disabled={submitting}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-amber py-4 font-display text-base font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
+                {error && <ErrorNote>{error}</ErrorNote>}
+                <Button
+                  size="lg" fullWidth loading={submitting} onClick={onSubmit}
+                  rightIcon={!submitting && <ArrowRightIcon size={20} strokeWidth={2} />}
                 >
-                  {submitting ? "Отправка…" : (
-                    <>
-                      Отправить заявку
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-sm">→</span>
-                    </>
-                  )}
-                </button>
+                  {submitting ? "Отправка…" : "Отправить заявку"}
+                </Button>
               </>
             )}
           </div>
         ) : (
-          /* ── Result ── */
-          <div className="space-y-4 px-4">
-            {result.merged ? (
-              <div className="space-y-3 rounded-2xl border border-amber/30 bg-amber/10 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber font-display text-lg font-extrabold text-white">
-                    {result.similar_count}
-                  </div>
-                  <div>
-                    <div className="font-display font-extrabold text-ink dark:text-white">
-                      Рядом найдено {result.similar_count} похожих заявок
-                    </div>
-                    <div className="mt-0.5 text-sm text-ink/60 dark:text-white/60">
-                      ИИ объединит их в одну проблему, чтобы не было дублей.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-good/30 bg-good/10 p-5">
-                <div className="font-display text-xl font-extrabold text-ink dark:text-white">
-                  Заявка принята
-                </div>
-                <p className="mt-1 text-sm text-ink/60 dark:text-white/60">
-                  Проблема добавлена на карту и учтена в индексе района.
-                </p>
-              </div>
-            )}
+          <Result result={result} onReset={reset} />
+        )}
+      </div>
+    </div>
+  );
+}
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={reset}
-                className="rounded-2xl border border-ink/15 py-3.5 text-sm font-semibold text-ink dark:border-white/15 dark:text-white"
-              >
-                Сообщить ещё
-              </button>
-              <Link
-                to="/dashboard"
-                className="rounded-2xl bg-amber py-3.5 text-center font-display text-sm font-extrabold text-white"
-              >
-                Мои заявки →
-              </Link>
+function ErrorNote({ children }) {
+  return (
+    <div className="rounded-xl bg-poor/[0.12] px-4 py-3 text-sm font-medium text-poor">{children}</div>
+  );
+}
+
+function Result({ result, onReset }) {
+  return (
+    <div className="animate-fade-up space-y-4">
+      {result.merged ? (
+        <div className="rounded-2xl border border-brand/30 bg-brand/[0.1] p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand font-display text-lg font-extrabold text-white">
+              {result.similar_count}
+            </span>
+            <div>
+              <div className="font-display font-extrabold text-ink dark:text-white">
+                Рядом найдено {result.similar_count} похожих заявок
+              </div>
+              <p className="mt-0.5 text-[13px] text-ink-2 dark:text-night-ink-2">
+                ИИ объединит их в одну проблему, чтобы не было дублей.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-good/30 bg-good/[0.1] p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-good text-white">
+              <CheckIcon size={24} strokeWidth={2.4} />
+            </span>
+            <div>
+              <div className="font-display text-lg font-extrabold text-ink dark:text-white">Заявка принята</div>
+              <p className="mt-0.5 text-[13px] text-ink-2 dark:text-night-ink-2">
+                Проблема добавлена на карту и учтена в индексе района.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="secondary" onClick={onReset}>Сообщить ещё</Button>
+        <Button to="/dashboard" rightIcon={<ArrowRightIcon size={18} strokeWidth={2} />}>Мои заявки</Button>
       </div>
     </div>
   );

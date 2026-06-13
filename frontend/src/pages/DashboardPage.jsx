@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { api, TYPE_LABELS, TYPE_ICONS, STATUS_META } from "../lib/api.js";
+import { Button } from "../components/ui/Button.jsx";
+import { StatusBadge } from "../components/ui/Badge.jsx";
+import { Segmented } from "../components/ui/Segmented.jsx";
+import { Spinner } from "../components/ui/Spinner.jsx";
+import {
+  PlusIcon, CameraIcon, MessageIcon, SendIcon, CheckIcon, TypeIcon,
+} from "../lib/icons.jsx";
+import { api, TYPE_LABELS, STATUS_META } from "../lib/api.js";
 
 const STEPS = [
-  { key: "pending",    label: "Принята" },
-  { key: "in_process", label: "В работе" },
-  { key: "completed",  label: "Завершена" },
+  { key: "pending", label: "Принята", color: "#E0901A" },
+  { key: "in_process", label: "В работе", color: "#3E82CF" },
+  { key: "completed", label: "Завершена", color: "#2F9E73" },
 ];
 
 function StatusProgress({ status }) {
   if (status === "rejected") {
     return (
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-poor" />
         <span className="num text-xs font-semibold text-poor">Отклонена</span>
       </div>
@@ -24,34 +30,32 @@ function StatusProgress({ status }) {
     <div className="mt-3 flex items-center">
       {STEPS.map((s, i) => {
         const done = i <= currentStep;
-        const active = i === currentStep;
-        const color = done
-          ? (active && normalized === "completed" ? "#3FA07E" : active ? "#4A90D9" : "#3FA07E")
-          : undefined;
         return (
           <div key={s.key} className="flex items-center">
             <div className="flex flex-col items-center">
               <div
-                className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all ${
+                className={`grid h-6 w-6 place-items-center rounded-full border-2 text-white transition-all duration-300 ${
                   done ? "" : "border-ink/15 dark:border-white/15"
                 }`}
-                style={done ? { background: color, borderColor: color } : {}}
+                style={
+                  done
+                    ? { background: STEPS[currentStep].color, borderColor: STEPS[currentStep].color }
+                    : {}
+                }
               >
-                {done && (
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
+                {done && <CheckIcon size={12} strokeWidth={2.6} />}
               </div>
-              <span className={`num mt-1 text-[9px] font-semibold ${
-                done ? "text-ink/70 dark:text-white/70" : "text-ink/25 dark:text-white/25"
-              }`}>
+              <span
+                className={`num mt-1 text-[9px] font-semibold ${
+                  done ? "text-ink-2 dark:text-night-ink-2" : "text-ink-3/70 dark:text-night-ink-3/70"
+                }`}
+              >
                 {s.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
               <div
-                className={`mx-1 mb-4 h-0.5 w-8 transition-all ${
+                className={`mx-1 mb-4 h-0.5 w-8 rounded transition-all duration-500 ${
                   i < currentStep ? "bg-good" : "bg-ink/10 dark:bg-white/10"
                 }`}
               />
@@ -70,10 +74,7 @@ function CitizenChat({ problemId }) {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    api.getMessages(problemId)
-      .then(setMessages)
-      .catch(() => {})
-      .finally(() => setLoaded(true));
+    api.getMessages(problemId).then(setMessages).catch(() => {}).finally(() => setLoaded(true));
   }, [problemId]);
 
   async function submit(e) {
@@ -85,20 +86,18 @@ function CitizenChat({ problemId }) {
       const msg = await api.sendMessage(problemId, body);
       setMessages((ms) => [...ms, msg]);
       setText("");
-    } catch {
-      /* ignore */
-    } finally {
+    } catch { /* ignore */ } finally {
       setSending(false);
     }
   }
 
   return (
-    <div className="mt-3 space-y-2 rounded-xl bg-ink/4 p-3 dark:bg-white/5">
+    <div className="mt-3 animate-fade-up space-y-2 rounded-xl bg-canvas-2 p-3 dark:bg-white/[0.05]">
       {!loaded && (
-        <div className="num py-2 text-center text-xs text-ink/30 dark:text-white/30">Загрузка…</div>
+        <div className="py-2 text-center"><Spinner size={15} className="text-ink-3" /></div>
       )}
       {loaded && messages.length === 0 && (
-        <div className="num py-2 text-center text-xs text-ink/30 dark:text-white/30">
+        <div className="num py-2 text-center text-xs text-ink-3 dark:text-night-ink-3">
           Сообщений от акимата пока нет
         </div>
       )}
@@ -109,8 +108,8 @@ function CitizenChat({ problemId }) {
             <div
               className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
                 mine
-                  ? "rounded-br-sm bg-amber text-white"
-                  : "rounded-bl-sm bg-card text-ink shadow-soft dark:bg-nightcard dark:text-white"
+                  ? "rounded-br-sm bg-brand text-white"
+                  : "rounded-bl-sm bg-card text-ink shadow-card dark:bg-nightcard dark:text-white"
               }`}
             >
               <div className="num mb-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-60">
@@ -126,14 +125,15 @@ function CitizenChat({ problemId }) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Ответить акимату…"
-          className="min-w-0 flex-1 rounded-xl bg-card px-3 py-2 text-sm text-ink outline-none placeholder:text-ink/30 dark:bg-nightcard dark:text-white dark:placeholder:text-white/30"
+          className="min-w-0 flex-1 rounded-xl bg-card px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-ink-3 focus:ring-2 focus:ring-brand/30 dark:bg-nightcard dark:text-white dark:placeholder:text-night-ink-3"
         />
         <button
           type="submit"
           disabled={sending || !text.trim()}
-          className="shrink-0 rounded-xl bg-amber px-3.5 py-2 text-sm font-bold text-white transition active:scale-95 disabled:opacity-40"
+          aria-label="Отправить"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand text-white transition-transform duration-150 ease-out-quart active:scale-95 disabled:opacity-40"
         >
-          {sending ? "…" : "→"}
+          {sending ? <Spinner size={14} /> : <SendIcon size={17} strokeWidth={2} />}
         </button>
       </form>
     </div>
@@ -141,38 +141,32 @@ function CitizenChat({ problemId }) {
 }
 
 function ProblemCard({ p }) {
-  const meta = STATUS_META[p.status] || STATUS_META.pending;
   const [open, setOpen] = useState(false);
   const canChat = p.user_id != null;
 
   return (
-    <div className="space-y-2 rounded-2xl border border-ink/8 bg-card p-4 shadow-soft dark:border-white/10 dark:bg-nightcard dark:shadow-none">
+    <div className="rounded-2xl border border-line bg-card p-4 shadow-card dark:border-night-line dark:bg-nightcard">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ink/5 text-xl dark:bg-white/10">
-            {TYPE_ICONS[p.type] || "📌"}
-          </div>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-canvas-2 text-ink-2 dark:bg-white/10 dark:text-night-ink-2">
+            <TypeIcon type={p.type} size={22} />
+          </span>
           <div>
             <div className="font-display font-bold text-ink dark:text-white">
               {TYPE_LABELS[p.type] || p.type}
             </div>
             {p.description && (
-              <div className="mt-0.5 line-clamp-2 text-sm text-ink/50 dark:text-white/50">
+              <div className="mt-0.5 line-clamp-2 text-[13px] text-ink-2 dark:text-night-ink-2">
                 {p.description}
               </div>
             )}
           </div>
         </div>
-        <span
-          className="num shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold"
-          style={{ background: `${meta.color}20`, color: meta.color }}
-        >
-          {meta.label}
-        </span>
+        <StatusBadge status={p.status} className="shrink-0" />
       </div>
       <StatusProgress status={p.status} />
-      <div className="flex items-center justify-between pt-1">
-        <div className="num text-[10px] text-ink/30 dark:text-white/25">
+      <div className="mt-1 flex items-center justify-between border-t border-line pt-3 dark:border-night-line">
+        <div className="num text-[11px] text-ink-3 dark:text-night-ink-3">
           {new Date(p.created_at).toLocaleDateString("ru-RU", {
             day: "numeric", month: "long", year: "numeric",
           })}
@@ -180,9 +174,10 @@ function ProblemCard({ p }) {
         {canChat && (
           <button
             onClick={() => setOpen((o) => !o)}
-            className="num text-[11px] font-semibold text-accent"
+            className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-accent transition-colors hover:opacity-80"
           >
-            {open ? "Скрыть диалог" : "💬 Диалог с акиматом"}
+            <MessageIcon size={15} strokeWidth={2} />
+            {open ? "Скрыть диалог" : "Диалог с акиматом"}
           </button>
         )}
       </div>
@@ -191,30 +186,28 @@ function ProblemCard({ p }) {
   );
 }
 
+const FILTERS = [
+  { value: "all", label: "Все" },
+  { value: "active", label: "Активные" },
+  { value: "completed", label: "Завершённые" },
+];
+
 export default function DashboardPage() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    api.myReports()
-      .then(setReports)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    api.myReports().then(setReports).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const counts = {
-    pending:    reports.filter((r) => r.status === "pending" || r.status === "open").length,
+    pending: reports.filter((r) => r.status === "pending" || r.status === "open").length,
     in_process: reports.filter((r) => r.status === "in_process").length,
-    completed:  reports.filter((r) => r.status === "completed").length,
-    rejected:   reports.filter((r) => r.status === "rejected").length,
+    completed: reports.filter((r) => r.status === "completed").length,
+    rejected: reports.filter((r) => r.status === "rejected").length,
   };
 
-  const FILTERS = [
-    ["all", "Все"],
-    ["active", "Активные"],
-    ["completed", "Завершённые"],
-  ];
   const visible = reports.filter((r) => {
     if (filter === "active") return ["open", "pending", "in_process"].includes(r.status);
     if (filter === "completed") return r.status === "completed";
@@ -223,79 +216,53 @@ export default function DashboardPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-lg space-y-5 px-4 pb-8 pt-5 md:max-w-2xl">
-
+      <div className="mx-auto max-w-lg space-y-5 px-4 pb-10 pt-6 md:max-w-2xl">
         {/* Header */}
         <div className="flex items-end justify-between">
-          <div>
-            <div className="num text-[10px] font-semibold uppercase tracking-widest text-ink/40 dark:text-white/35">
-              Мои обращения
-            </div>
-            <h1 className="mt-0.5 font-display text-xl font-extrabold text-ink dark:text-white">
-              Заявки
-            </h1>
-          </div>
-          <Link
-            to="/report"
-            className="rounded-full bg-amber px-4 py-2 text-sm font-bold text-white shadow-fab transition active:scale-95"
-          >
-            + Новая
-          </Link>
+          <h1 className="font-display text-2xl font-extrabold text-ink dark:text-white">Мои заявки</h1>
+          <Button to="/report" size="sm" leftIcon={<PlusIcon size={18} strokeWidth={2.2} />}>Новая</Button>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-4 gap-2">
+        {/* Stats */}
+        <div className="grid grid-cols-4 gap-2.5">
           {[
-            { label: "Принято",  value: counts.pending,    color: "#F4A024" },
-            { label: "В работе", value: counts.in_process, color: "#4A90D9" },
-            { label: "Готово",   value: counts.completed,  color: "#3FA07E" },
-            { label: "Откл.",    value: counts.rejected,   color: "#E1543B" },
+            { label: "Принято", value: counts.pending, color: STATUS_META.pending.color },
+            { label: "В работе", value: counts.in_process, color: STATUS_META.in_process.color },
+            { label: "Готово", value: counts.completed, color: STATUS_META.completed.color },
+            { label: "Отклон.", value: counts.rejected, color: STATUS_META.rejected.color },
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-ink/8 bg-card p-3 text-center shadow-soft dark:border-white/10 dark:bg-nightcard dark:shadow-none"
+              className="rounded-2xl border border-line bg-card p-3 text-center shadow-card dark:border-night-line dark:bg-nightcard"
             >
               <div className="num text-xl font-bold" style={{ color: s.color }}>{s.value}</div>
-              <div className="num mt-0.5 text-[10px] text-ink/40 dark:text-white/40">{s.label}</div>
+              <div className="mt-0.5 text-[10px] text-ink-3 dark:text-night-ink-3">{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Filter */}
-        <div className="flex gap-1 rounded-xl bg-ink/5 p-1 dark:bg-white/5">
-          {FILTERS.map(([v, l]) => (
-            <button
-              key={v}
-              onClick={() => setFilter(v)}
-              className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
-                filter === v
-                  ? "bg-card text-ink shadow-soft dark:bg-white/15 dark:text-white"
-                  : "text-ink/50 dark:text-white/50"
-              }`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        <Segmented options={FILTERS} value={filter} onChange={setFilter} className="flex w-full" />
 
-        {/* Reports list */}
+        {/* List */}
         <div className="space-y-3">
           {loading && (
-            <div className="num animate-pulse py-4 text-center text-sm text-ink/30 dark:text-white/30">
-              Загрузка…
-            </div>
+            <div className="py-8 text-center"><Spinner size={22} className="text-brand" /></div>
           )}
 
           {!loading && visible.length === 0 && (
-            <div className="space-y-3 rounded-2xl border border-ink/8 bg-card p-8 text-center shadow-soft dark:border-white/10 dark:bg-nightcard dark:shadow-none">
-              <div className="text-3xl">📸</div>
-              <div className="text-sm text-ink/40 dark:text-white/40">Заявок пока нет</div>
-              <Link
-                to="/report"
-                className="inline-block rounded-xl bg-amber px-4 py-2 text-sm font-semibold text-white"
-              >
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-card/60 p-10 text-center dark:border-night-line dark:bg-nightcard/60">
+              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-brand/[0.12] text-brand">
+                <CameraIcon size={28} strokeWidth={1.8} />
+              </span>
+              <div>
+                <div className="font-display font-bold text-ink dark:text-white">Здесь появятся ваши заявки</div>
+                <p className="mt-1 text-[13px] text-ink-2 dark:text-night-ink-2">
+                  Сфотографируйте проблему — она попадёт на карту города.
+                </p>
+              </div>
+              <Button to="/report" size="sm" leftIcon={<CameraIcon size={17} strokeWidth={2} />}>
                 Сообщить о проблеме
-              </Link>
+              </Button>
             </div>
           )}
 
