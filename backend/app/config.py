@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     openai_vision_model: str = "gpt-4o"
     openai_embed_model: str = "text-embedding-3-small"
     jwt_secret: str = "cityeye-dev-secret-change-in-production"
-    supabase_url: str = ""
+    # URL проекта Supabase — не секрет, поэтому задан дефолтом (env может переопределить).
+    # Секретный service-ключ берётся только из env (SUPABASE_SERVICE_KEY).
+    supabase_url: str = "https://fpmwhocgcvuzrfzhllbb.supabase.co"
     supabase_service_key: str = ""
 
     @property
