@@ -1,10 +1,12 @@
 import os
 import uuid
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from .config import settings
 from . import model as ai_model
 from .auth import (
     create_token, get_current_user_optional, hash_password,
@@ -23,6 +25,25 @@ router = APIRouter(prefix="/api")
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+async def _upload_photo(data: bytes, filename: str, content_type: str) -> str:
+    if settings.supabase_url and settings.supabase_service_key:
+        url = f"{settings.supabase_url}/storage/v1/object/problem_photos/{filename}"
+        headers = {
+            "Authorization": f"Bearer {settings.supabase_service_key}",
+            "Content-Type": content_type,
+            "x-upsert": "true",
+        }
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(url, content=data, headers=headers)
+            resp.raise_for_status()
+        return f"{settings.supabase_url}/storage/v1/object/public/problem_photos/{filename}"
+    else:
+        path = os.path.join(UPLOAD_DIR, filename)
+        with open(path, "wb") as f:
+            f.write(data)
+        return f"/uploads/{filename}"
 
 
 # ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -162,9 +183,7 @@ async def create_report(
         if data:
             ext = os.path.splitext(file.filename or "")[1] or ".jpg"
             fname = f"{uuid.uuid4().hex}{ext}"
-            with open(os.path.join(UPLOAD_DIR, fname), "wb") as f:
-                f.write(data)
-            photo_url = f"/uploads/{fname}"
+            photo_url = await _upload_photo(data, fname, file.content_type or "image/jpeg")
 
     embedding = ai_model.embed(f"{type}. {description}")
 
