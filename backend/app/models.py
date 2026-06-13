@@ -70,3 +70,22 @@ class Problem(Base):
 
     district: Mapped["District"] = relationship(back_populates="problems")
     user: Mapped["User | None"] = relationship(back_populates="problems")
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="problem",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+    )
+
+
+class Message(Base):
+    """Сообщение в треде заявки между акиматом и гражданином."""
+
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    problem_id: Mapped[int] = mapped_column(ForeignKey("problems.id"), nullable=False)
+    sender: Mapped[str] = mapped_column(String(20), nullable=False)  # "akimat" | "citizen"
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    problem: Mapped["Problem"] = relationship(back_populates="messages")

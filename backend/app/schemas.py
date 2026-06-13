@@ -56,9 +56,25 @@ class ProblemOut(BaseModel):
     user_id: int | None
     duplicate_count: int
     created_at: datetime
+    reporter_email: str | None = None
 
     class Config:
         from_attributes = True
+
+
+class MessageOut(BaseModel):
+    id: int
+    problem_id: int
+    sender: str
+    body: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class MessageIn(BaseModel):
+    body: str
 
 
 class AnalyzeOut(BaseModel):

@@ -97,13 +97,19 @@ VISION_PROMPT = (
 # 1. VISION — распознавание фото
 # ---------------------------------------------------------------------------
 
-def analyze_photo(image_bytes: bytes, content_type: str = "image/jpeg") -> dict:
+def analyze_photo(
+    image_bytes: bytes,
+    content_type: str = "image/jpeg",
+    description: str = "",
+) -> dict:
     """
     Отправляет фото в GPT-4o и получает тип/серьёзность/описание проблемы.
 
     Args:
         image_bytes:  бинарное содержимое фото (JPEG или PNG)
         content_type: MIME-тип файла
+        description:  опциональное описание от гражданина — помогает ИИ
+                      не гадать и точнее определить тип/серьёзность
 
     Returns:
         dict с ключами 'type', 'severity', 'description'
@@ -111,30 +117,34 @@ def analyze_photo(image_bytes: bytes, content_type: str = "image/jpeg") -> dict:
     client = _get_client()
 
     if client is None:
-        # Нет ключа → детерминированная заглушка
+        # Нет ключа → детерминированная заглушка (описание игнорируется)
         return _mock_analyze(image_bytes)
 
     try:
         # Кодируем фото в base64: OpenAI принимает картинки в таком формате
         b64 = base64.b64encode(image_bytes).decode()
 
+        content = [{"type": "text", "text": VISION_PROMPT}]
+        # Подмешиваем описание гражданина, если оно есть
+        if description.strip():
+            content.append({
+                "type": "text",
+                "text": (
+                    f"Гражданин описал проблему так: «{description.strip()}». "
+                    "Учти это описание вместе с фото при определении type и severity."
+                ),
+            })
+        content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{content_type};base64,{b64}",
+                "detail": "low",  # быстрее и дешевле для классификации
+            },
+        })
+
         response = client.chat.completions.create(
             model=settings.openai_vision_model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": VISION_PROMPT},
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:{content_type};base64,{b64}",
-                                "detail": "low",  # быстрее и дешевле для классификации
-                            },
-                        },
-                    ],
-                }
-            ],
+            messages=[{"role": "user", "content": content}],
             max_tokens=200,
             temperature=0,  # 0 = детерминированный ответ, без галлюцинаций
         )

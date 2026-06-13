@@ -10,6 +10,7 @@ import AuthPage from "./pages/AuthPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import AkimatPage from "./pages/AkimatPage.jsx";
+import AkimatProblemPage from "./pages/AkimatProblemPage.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import "./index.css";
 
@@ -19,8 +20,9 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Портал акимата — отдельная страница вне общего каркаса */}
+            {/* Портал акимата — отдельные страницы вне общего каркаса */}
             <Route path="/akimat" element={<AkimatPage />} />
+            <Route path="/akimat/problem/:id" element={<AkimatProblemPage />} />
 
             <Route element={<App />}>
               <Route path="/" element={<MapPage />} />

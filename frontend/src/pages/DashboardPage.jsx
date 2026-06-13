@@ -63,8 +63,88 @@ function StatusProgress({ status }) {
   );
 }
 
+function CitizenChat({ problemId }) {
+  const [messages, setMessages] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    api.getMessages(problemId)
+      .then(setMessages)
+      .catch(() => {})
+      .finally(() => setLoaded(true));
+  }, [problemId]);
+
+  async function submit(e) {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body) return;
+    setSending(true);
+    try {
+      const msg = await api.sendMessage(problemId, body);
+      setMessages((ms) => [...ms, msg]);
+      setText("");
+    } catch {
+      /* ignore */
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 space-y-2 rounded-xl bg-ink/4 p-3 dark:bg-white/5">
+      {!loaded && (
+        <div className="num py-2 text-center text-xs text-ink/30 dark:text-white/30">Загрузка…</div>
+      )}
+      {loaded && messages.length === 0 && (
+        <div className="num py-2 text-center text-xs text-ink/30 dark:text-white/30">
+          Сообщений от акимата пока нет
+        </div>
+      )}
+      {messages.map((m) => {
+        const mine = m.sender === "citizen";
+        return (
+          <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                mine
+                  ? "rounded-br-sm bg-amber text-white"
+                  : "rounded-bl-sm bg-card text-ink shadow-soft dark:bg-nightcard dark:text-white"
+              }`}
+            >
+              <div className="num mb-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-60">
+                {mine ? "Вы" : "Акимат"}
+              </div>
+              {m.body}
+            </div>
+          </div>
+        );
+      })}
+      <form onSubmit={submit} className="flex items-center gap-2 pt-1">
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Ответить акимату…"
+          className="min-w-0 flex-1 rounded-xl bg-card px-3 py-2 text-sm text-ink outline-none placeholder:text-ink/30 dark:bg-nightcard dark:text-white dark:placeholder:text-white/30"
+        />
+        <button
+          type="submit"
+          disabled={sending || !text.trim()}
+          className="shrink-0 rounded-xl bg-amber px-3.5 py-2 text-sm font-bold text-white transition active:scale-95 disabled:opacity-40"
+        >
+          {sending ? "…" : "→"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ProblemCard({ p }) {
   const meta = STATUS_META[p.status] || STATUS_META.pending;
+  const [open, setOpen] = useState(false);
+  const canChat = p.user_id != null;
+
   return (
     <div className="space-y-2 rounded-2xl border border-ink/8 bg-card p-4 shadow-soft dark:border-white/10 dark:bg-nightcard dark:shadow-none">
       <div className="flex items-start justify-between gap-3">
@@ -91,11 +171,22 @@ function ProblemCard({ p }) {
         </span>
       </div>
       <StatusProgress status={p.status} />
-      <div className="num pt-1 text-[10px] text-ink/30 dark:text-white/25">
-        {new Date(p.created_at).toLocaleDateString("ru-RU", {
-          day: "numeric", month: "long", year: "numeric",
-        })}
+      <div className="flex items-center justify-between pt-1">
+        <div className="num text-[10px] text-ink/30 dark:text-white/25">
+          {new Date(p.created_at).toLocaleDateString("ru-RU", {
+            day: "numeric", month: "long", year: "numeric",
+          })}
+        </div>
+        {canChat && (
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="num text-[11px] font-semibold text-accent"
+          >
+            {open ? "Скрыть диалог" : "💬 Диалог с акиматом"}
+          </button>
+        )}
       </div>
+      {open && canChat && <CitizenChat problemId={p.id} />}
     </div>
   );
 }

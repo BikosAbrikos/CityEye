@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, TYPE_LABELS, TYPE_ICONS, SEVERITY_LABELS, STATUS_META } from "../lib/api.js";
 import { SEVERITY_COLOR } from "../lib/colors.js";
 import { useAuth } from "../lib/auth.jsx";
@@ -189,7 +190,11 @@ function Queue() {
             const meta = STATUS_META[p.status] || STATUS_META.pending;
             const sevColor = SEVERITY_COLOR[p.severity];
             return (
-              <div key={p.id} className="rounded-2xl bg-white p-4 shadow-soft">
+              <Link
+                key={p.id}
+                to={`/akimat/problem/${p.id}`}
+                className="block rounded-2xl bg-white p-4 shadow-soft transition hover:shadow-md"
+              >
                 <div className="flex flex-wrap items-start gap-3">
                   {p.photo_url ? (
                     <img src={p.photo_url} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
@@ -228,11 +233,11 @@ function Queue() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 flex-wrap gap-2">
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {STATUS_ACTIONS.filter((a) => a.status !== p.status).map((a) => (
                       <button
                         key={a.status}
-                        onClick={() => changeStatus(p.id, a.status)}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); changeStatus(p.id, a.status); }}
                         disabled={!!busy}
                         className="rounded-xl px-3 py-1.5 text-xs font-bold text-white transition active:scale-95 disabled:opacity-50"
                         style={{ background: busy === `${p.id}-${a.status}` ? "#999" : a.bg }}
@@ -240,9 +245,10 @@ function Queue() {
                         {busy === `${p.id}-${a.status}` ? "…" : a.label}
                       </button>
                     ))}
+                    <span className="self-center text-ink/25">›</span>
                   </div>
                 </div>
-              </div>
+              </Link>
             );
           })}
 

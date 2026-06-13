@@ -25,11 +25,25 @@ export const api = {
   },
   stats: () => fetch(`${BASE}/stats`).then(handle),
 
-  analyze: (file) => {
+  analyze: (file, description = "") => {
     const fd = new FormData();
     fd.append("file", file);
+    fd.append("description", description || "");
     return fetch(`${BASE}/analyze`, { method: "POST", body: fd }).then(handle);
   },
+
+  getProblem: (id) =>
+    fetch(`${BASE}/problems/${id}`, { headers: authHeaders() }).then(handle),
+
+  getMessages: (id) =>
+    fetch(`${BASE}/problems/${id}/messages`, { headers: authHeaders() }).then(handle),
+
+  sendMessage: (id, body) =>
+    fetch(`${BASE}/problems/${id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ body }),
+    }).then(handle),
 
   createReport: ({ file, lat, lng, type, severity, description }) => {
     const fd = new FormData();

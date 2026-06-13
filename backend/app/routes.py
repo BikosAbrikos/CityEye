@@ -15,9 +15,11 @@ from .auth import (
 from .db import get_db
 from .dedup import find_duplicate
 from .index import assign_district, bucket_for, recalc_district
-from .models import ACTIVE_STATUSES, SEVERITIES, STATUSES, District, Problem, User
+from .models import (
+    ACTIVE_STATUSES, SEVERITIES, STATUSES, District, Message, Problem, User,
+)
 from .schemas import (
-    AnalyzeOut, DistrictOut, LoginIn, ProblemOut,
+    AnalyzeOut, DistrictOut, LoginIn, MessageIn, MessageOut, ProblemOut,
     RegisterIn, ReportOut, StatsOut, StatusUpdateIn, TokenOut, UserOut,
 )
 
@@ -44,6 +46,11 @@ async def _upload_photo(data: bytes, filename: str, content_type: str) -> str:
         with open(path, "wb") as f:
             f.write(data)
         return f"/uploads/{filename}"
+
+
+def _can_access(problem: Problem, user: User) -> bool:
+    """Доступ к заявке: акимат — ко всем, гражданин — только к своим."""
+    return user.is_admin or problem.user_id == user.id
 
 
 # ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -153,14 +160,82 @@ def my_reports(
     )
 
 
+# ── ДЕТАЛЬ ЗАЯВКИ + ЧАТ ───────────────────────────────────────────────────────
+
+@router.get("/problems/{problem_id}", response_model=ProblemOut)
+def get_problem(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    p = db.get(Problem, problem_id)
+    if p is None:
+        raise HTTPException(404, "Заявка не найдена")
+    if not _can_access(p, user):
+        raise HTTPException(403, "Нет доступа к этой заявке")
+    out = ProblemOut.model_validate(p)
+    out.reporter_email = p.user.email if p.user else None
+    return out
+
+
+@router.get("/problems/{problem_id}/messages", response_model=list[MessageOut])
+def list_messages(
+    problem_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    p = db.get(Problem, problem_id)
+    if p is None:
+        raise HTTPException(404, "Заявка не найдена")
+    if not _can_access(p, user):
+        raise HTTPException(403, "Нет доступа к этой заявке")
+    return (
+        db.query(Message)
+        .filter(Message.problem_id == problem_id)
+        .order_by(Message.created_at)
+        .all()
+    )
+
+
+@router.post("/problems/{problem_id}/messages", response_model=MessageOut)
+def post_message(
+    problem_id: int,
+    body: MessageIn,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    p = db.get(Problem, problem_id)
+    if p is None:
+        raise HTTPException(404, "Заявка не найдена")
+    if not _can_access(p, user):
+        raise HTTPException(403, "Нет доступа к этой заявке")
+    text = body.body.strip()
+    if not text:
+        raise HTTPException(400, "Пустое сообщение")
+    msg = Message(
+        problem_id=problem_id,
+        sender="akimat" if user.is_admin else "citizen",
+        body=text,
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    return msg
+
+
 # ── AI: АНАЛИЗ ФОТО ───────────────────────────────────────────────────────────
 
 @router.post("/analyze", response_model=AnalyzeOut)
-async def analyze(file: UploadFile = File(...)):
+async def analyze(
+    file: UploadFile = File(...),
+    description: str = Form(""),
+):
     data = await file.read()
     if not data:
         raise HTTPException(400, "Пустой файл")
-    result = ai_model.analyze_photo(data, file.content_type or "image/jpeg")
+    result = ai_model.analyze_photo(
+        data, file.content_type or "image/jpeg", description
+    )
     return AnalyzeOut(**result)
 
 

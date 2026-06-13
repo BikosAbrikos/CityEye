@@ -16,6 +16,7 @@ const labelCls =
 export default function ReportPage() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [preDescription, setPreDescription] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeTime, setAnalyzeTime] = useState(null);
   const [card, setCard] = useState(null);
@@ -25,28 +26,33 @@ export default function ReportPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  async function onFile(e) {
+  function onFile(e) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));
     setResult(null); setError(null); setCard(null); setAnalyzeTime(null);
-    setAnalyzing(true);
-    const t0 = Date.now();
-    try {
-      const data = await api.analyze(f);
-      setCard(data);
-      setAnalyzeTime(((Date.now() - t0) / 1000).toFixed(1));
-    } catch {
-      setError("ИИ не смог распознать фото — заполните вручную.");
-      setCard({ type: "other", severity: "medium", description: "" });
-    } finally {
-      setAnalyzing(false);
-    }
     navigator.geolocation?.getCurrentPosition(
       (p) => setPos([p.coords.latitude, p.coords.longitude]),
       () => {}
     );
+  }
+
+  async function onAnalyze() {
+    if (!file) return;
+    setError(null); setAnalyzing(true);
+    const t0 = Date.now();
+    try {
+      const data = await api.analyze(file, preDescription);
+      // Сохраняем слова гражданина как стартовое описание, если он их ввёл
+      setCard({ ...data, description: preDescription.trim() || data.description });
+      setAnalyzeTime(((Date.now() - t0) / 1000).toFixed(1));
+    } catch {
+      setError("ИИ не смог распознать фото — заполните вручную.");
+      setCard({ type: "other", severity: "medium", description: preDescription });
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   async function onSubmit() {
@@ -68,6 +74,7 @@ export default function ReportPage() {
   function reset() {
     setFile(null); setPreview(null); setCard(null);
     setResult(null); setError(null); setAnalyzeTime(null);
+    setPreDescription("");
   }
 
   const step = !preview ? 0 : !card ? 1 : 2;
@@ -87,7 +94,7 @@ export default function ReportPage() {
           <div>
             <div className="num text-[10px] font-semibold uppercase tracking-widest text-ink/40 dark:text-white/35">
               {step === 0 && "Шаг 1 из 2 · Загрузите фото"}
-              {step === 1 && "Шаг 1 из 2 · Анализ ИИ…"}
+              {step === 1 && "Шаг 1 из 2 · Опишите и анализируйте"}
               {step === 2 && "Шаг 2 из 2 · Проверьте данные"}
             </div>
             <h1 className="font-display text-xl font-extrabold text-ink dark:text-white">
@@ -128,7 +135,7 @@ export default function ReportPage() {
                           ? "ИИ анализирует…"
                           : analyzeTime
                           ? `ИИ распознал объект за ${analyzeTime} с`
-                          : "Готово"}
+                          : "Готово к анализу"}
                       </span>
                     </div>
                     <span className="num cursor-pointer text-[11px] text-white/60">
@@ -148,6 +155,41 @@ export default function ReportPage() {
                 </div>
               )}
             </label>
+
+            {/* ── Описание до анализа + кнопка «Анализировать» ── */}
+            {preview && !card && (
+              <>
+                <div className={cardCls}>
+                  <div className={labelCls}>Опишите проблему (необязательно)</div>
+                  <textarea
+                    rows={3}
+                    placeholder="Что случилось? Чем точнее опишете, тем точнее ИИ оценит важность."
+                    className="w-full resize-none bg-transparent text-sm text-ink outline-none placeholder:text-ink/30 dark:text-white dark:placeholder:text-white/30"
+                    value={preDescription}
+                    onChange={(e) => setPreDescription(e.target.value)}
+                  />
+                </div>
+
+                {error && (
+                  <div className="rounded-xl bg-poor/15 px-4 py-3 text-sm text-poor">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  onClick={onAnalyze}
+                  disabled={analyzing}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-amber py-4 font-display text-base font-extrabold text-white transition active:scale-[0.98] disabled:opacity-50"
+                >
+                  {analyzing ? "ИИ анализирует…" : (
+                    <>
+                      Анализировать
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-sm">✨</span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
 
             {/* ── Info cards (after analysis) ── */}
             {card && !analyzing && (
