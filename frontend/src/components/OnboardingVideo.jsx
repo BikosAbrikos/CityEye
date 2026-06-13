@@ -49,7 +49,7 @@ export default function OnboardingVideo({ src, onClose }) {
       }`}
       style={{ paddingTop: "max(env(safe-area-inset-top), 1rem)", paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}
     >
-      <div className="relative w-full max-w-[460px]">
+      <div className="relative w-full max-w-[460px] md:max-w-2xl lg:max-w-4xl">
         {/* Подпись */}
         <div className="mb-3 text-center">
           <div className="font-display text-lg font-extrabold text-white">Добро пожаловать в CityEye</div>
@@ -60,7 +60,7 @@ export default function OnboardingVideo({ src, onClose }) {
           <video
             ref={videoRef}
             src={src}
-            className="max-h-[68dvh] w-full bg-black object-contain"
+            className="max-h-[60dvh] w-full bg-black object-contain md:max-h-[72dvh]"
             autoPlay
             muted
             playsInline
